@@ -1,0 +1,29 @@
+version: '3.8'
+
+services:
+  nextjs-app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ssadmin-nextjs
+    restart: unless-stopped
+    ports:
+      - "${APP_PORT:-6000}:6000"
+    env_file:
+      - .env
+    networks:
+      - ssadmin-network
+    healthcheck:
+      test: ["CMD", "node", "-e", "require('http').get('http://localhost:6000', (r) => {process.exit(r.statusCode === 200 ? 0 : 1)})"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    labels:
+      - "com.ssadmin.service=nextjs"
+      - "com.ssadmin.environment=production"
+
+networks:
+  ssadmin-network:
+    driver: bridge
+
