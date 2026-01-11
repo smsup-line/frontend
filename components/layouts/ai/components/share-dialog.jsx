@@ -148,3 +148,11 @@ export function ShareDialog() {
     </Dialog>);
 
 }
+      </DialogContent>
+    </Dialog>);
+
+}
+      </DialogContent>
+    </Dialog>);
+
+}

@@ -94,3 +94,47 @@ export async function POST(request) {
     );
   }
 }
+
+        errorData = { message: responseText || 'Failed to create promotion history' };
+      }
+      
+      console.error('Backend error:', errorData);
+      return NextResponse.json(
+        { message: errorData.message || errorData.error || 'Failed to create promotion history' },
+        { status: response.status }
+      );
+    }
+
+    const data = await response.json();
+    console.log('Promotion history created successfully:', data);
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error('Create promotion history API error:', error);
+    return NextResponse.json(
+      { message: 'ไม่สามารถเชื่อมต่อ API ได้' },
+      { status: 500 }
+    );
+  }
+}
+
+        errorData = { message: responseText || 'Failed to create promotion history' };
+      }
+      
+      console.error('Backend error:', errorData);
+      return NextResponse.json(
+        { message: errorData.message || errorData.error || 'Failed to create promotion history' },
+        { status: response.status }
+      );
+    }
+
+    const data = await response.json();
+    console.log('Promotion history created successfully:', data);
+    return NextResponse.json(data);
+  } catch (error) {
+    console.error('Create promotion history API error:', error);
+    return NextResponse.json(
+      { message: 'ไม่สามารถเชื่อมต่อ API ได้' },
+      { status: 500 }
+    );
+  }
+}
