@@ -213,11 +213,3 @@ export function AskAI({ open, onOpenChange }) {
     </Dialog>);
 
 }
-      </DialogContent>
-    </Dialog>);
-
-}
-      </DialogContent>
-    </Dialog>);
-
-}

@@ -180,39 +180,3 @@ export async function PUT(request, { params }) {
   }
 }
 
-
-      return NextResponse.json(
-        { message: data.message || data.error || 'Failed to update settings' },
-        { status: response.status }
-      );
-    }
-
-    const data = await response.json();
-    return NextResponse.json(data);
-  } catch (error) {
-    console.error('Update settings API error:', error);
-    return NextResponse.json(
-      { message: 'ไม่สามารถเชื่อมต่อ API ได้' },
-      { status: 500 }
-    );
-  }
-}
-
-
-      return NextResponse.json(
-        { message: data.message || data.error || 'Failed to update settings' },
-        { status: response.status }
-      );
-    }
-
-    const data = await response.json();
-    return NextResponse.json(data);
-  } catch (error) {
-    console.error('Update settings API error:', error);
-    return NextResponse.json(
-      { message: 'ไม่สามารถเชื่อมต่อ API ได้' },
-      { status: 500 }
-    );
-  }
-}
-

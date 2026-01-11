@@ -99,29 +99,3 @@ export default function CrmCustomerLayout({ children }) {
     </AuthGuard>
   );
 }
-
-  if (isLoading) {
-    return <ScreenLoader />;
-  }
-
-  return (
-    <AuthGuard>
-      <LayoutProvider sidebarNavItems={navItems}>
-        <DefaultLayout>{children}</DefaultLayout>
-      </LayoutProvider>
-    </AuthGuard>
-  );
-}
-
-  if (isLoading) {
-    return <ScreenLoader />;
-  }
-
-  return (
-    <AuthGuard>
-      <LayoutProvider sidebarNavItems={navItems}>
-        <DefaultLayout>{children}</DefaultLayout>
-      </LayoutProvider>
-    </AuthGuard>
-  );
-}
