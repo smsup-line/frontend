@@ -74,7 +74,7 @@ export default function CrmCustomerLayout({ children }) {
     return () => clearTimeout(timer);
   }, []);
 
-  // ถ้าเป็นหน้า login, profile, verify-phone, add-customer, receipt-scanner, receipt-scanner/employee, points-history, my-promotions, หรือ approve-promotions ไม่ต้องใช้ DefaultLayout
+  // ถ้าเป็นหน้า login, profile, verify-phone, add-customer, receipt-scanner, receipt-scanner/employee, points-history, my-promotions, approve-promotions, หรือ promotions ไม่ต้องใช้ DefaultLayout
   if (pathname === '/crm-customer/login' || 
       pathname === '/crm-customer/profile' || 
       pathname === '/crm-customer/verify-phone' ||
@@ -83,7 +83,8 @@ export default function CrmCustomerLayout({ children }) {
       pathname === '/crm-customer/receipt-scanner/employee' ||
       pathname === '/crm-customer/points-history' ||
       pathname === '/crm-customer/my-promotions' ||
-      pathname === '/crm-customer/approve-promotions') {
+      pathname === '/crm-customer/approve-promotions' ||
+      pathname === '/crm-customer/promotions') {
     return <AuthGuard>{children}</AuthGuard>;
   }
 

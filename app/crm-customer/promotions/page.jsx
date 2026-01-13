@@ -1,13 +1,10 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Content } from '@/components/layouts/crm/components/content';
-import PromotionsList from './promotions-list';
-import { PageHeader } from './page-header';
 import CustomerPromotionsPage from './customer-promotions-page';
+import EmployeePromotionsPage from './employee-promotions-page';
 
 export default function PromotionsPage() {
-  const [refreshKey, setRefreshKey] = useState(0);
   const [userRole, setUserRole] = useState(null);
   const [loading, setLoading] = useState(true);
 
@@ -39,18 +36,11 @@ export default function PromotionsPage() {
   }
 
   // If user is customer, show customer promotions page
-  // If user is employee/admin, show admin promotions list
+  // If user is employee/admin, show employee promotions page
   const isEmployee = userRole === 'employee' || userRole === 'adminshop' || userRole === 'admin';
 
   if (isEmployee) {
-    return (
-      <>
-        <PageHeader onRefresh={() => setRefreshKey(prev => prev + 1)} />
-        <Content className="block py-0">
-          <PromotionsList key={refreshKey} />
-        </Content>
-      </>
-    );
+    return <EmployeePromotionsPage />;
   }
 
   // Customer view
