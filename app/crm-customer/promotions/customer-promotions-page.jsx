@@ -454,4 +454,3 @@ export default function CustomerPromotionsPage() {
     </div>
   );
 }
-

@@ -45,9 +45,9 @@ export function AuthGuard({ children }) {
         setIsAuthenticated(true);
         setIsChecking(false);
 
-        // ถ้า authenticated และเป็นหน้า login ให้ redirect ไป dashboard
+        // ถ้า authenticated และเป็นหน้า login ให้ redirect ไป profile
         if (pathname === '/crm-customer/login') {
-          router.replace('/crm-customer/dashboard');
+          router.replace('/crm-customer/profile');
         }
       } catch (e) {
         // ถ้า parse user ไม่ได้ ให้ clear และ redirect

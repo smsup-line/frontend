@@ -47,10 +47,10 @@ export default function ReceiptScannerForm() {
   }, []);
 
   useEffect(() => {
-    if (!loading && user) {
+    if (!loading && user && userDetails) {
       loadReceipts();
     }
-  }, [loading, user]);
+  }, [loading, user, userDetails]);
 
   const loadUserData = async () => {
     try {
@@ -93,8 +93,20 @@ export default function ReceiptScannerForm() {
   const loadReceipts = async () => {
     try {
       setLoadingReceipts(true);
-      const data = await receiptsApi.getAll();
+      
+      // Get customer_id from userDetails or user
+      const customerId = userDetails?.id || user?.id;
+      
+      if (!customerId) {
+        console.error('Customer ID not found');
+        setReceipts([]);
+        return;
+      }
+      
+      console.log('Loading customer receipts for customer_id:', customerId);
+      const data = await receiptsApi.getCustomerReceipts(customerId);
       const receiptsList = Array.isArray(data) ? data : [];
+      
       // Sort by created_at descending (newest first)
       receiptsList.sort((a, b) => {
         const dateA = new Date(a.created_at || 0);

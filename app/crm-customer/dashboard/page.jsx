@@ -1,20 +1,15 @@
-import { Content } from '@/components/layouts/crm/components/content';
-import { PageHeader } from './page-header';
+'use client';
+
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 
 export default function DashboardPage() {
-  return (
-    <>
-      <PageHeader />
-      <Content className="block py-0">
-        <div className="p-6">
-          <h2 className="text-2xl font-bold mb-4">Dashboard</h2>
-          <p className="text-muted-foreground">หน้า Dashboard กำลังพัฒนา...</p>
-        </div>
-      </Content>
-    </>
-  );
+  const router = useRouter();
+
+  useEffect(() => {
+    // Redirect to profile page
+    router.replace('/crm-customer/profile');
+  }, [router]);
+
+  return null;
 }
-
-
-
-
