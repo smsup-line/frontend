@@ -41,13 +41,33 @@ export function AuthGuard({ children }) {
           return;
         }
 
+        // ตรวจสอบ otp_verify สำหรับลูกค้า (ไม่ใช่ employee)
+        const userRole = user.role || user.user_type || 'customer';
+        const isEmployee = userRole === 'employee';
+        const isCustomer = !isEmployee;
+        const otpVerified = user.otp_verify || false;
+        
+        // ถ้าเป็นลูกค้าและยังไม่ verify OTP และไม่ใช่หน้า verify-phone หรือ login
+        if (isCustomer && !otpVerified && pathname !== '/crm-customer/verify-phone' && pathname !== '/crm-customer/login') {
+          console.log('Customer OTP not verified, redirecting to verify-phone');
+          setIsAuthenticated(false);
+          setIsChecking(false);
+          router.replace('/crm-customer/verify-phone');
+          return;
+        }
+
         // ถ้าทุกอย่างถูกต้อง
         setIsAuthenticated(true);
         setIsChecking(false);
 
-        // ถ้า authenticated และเป็นหน้า login ให้ redirect ไป profile
+        // ถ้า authenticated และเป็นหน้า login ให้ redirect
         if (pathname === '/crm-customer/login') {
-          router.replace('/crm-customer/profile');
+          // ตรวจสอบ otp_verify อีกครั้งก่อน redirect
+          if (isCustomer && !otpVerified) {
+            router.replace('/crm-customer/verify-phone');
+          } else {
+            router.replace('/crm-customer/profile');
+          }
         }
       } catch (e) {
         // ถ้า parse user ไม่ได้ ให้ clear และ redirect

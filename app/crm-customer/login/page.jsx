@@ -700,8 +700,21 @@ export default function LoginPage() {
         console.log('Cleaned up shop_id/branch_id from URL');
       }
 
-      toast.success('เข้าสู่ระบบสำเร็จ');
-      router.push('/crm-customer/profile');
+      // Check otp_verify for customers only
+      const otpVerified = userData.otp_verify || false;
+      const isCustomer = !isEmployee;
+      
+      if (isCustomer && !otpVerified) {
+        // Customer hasn't verified OTP, redirect to verify-phone page
+        console.log('Customer OTP not verified, redirecting to verify-phone page');
+        toast.warning('กรุณาเพิ่มหมายเลขโทรศัพท์และยืนยัน OTP');
+        router.push('/crm-customer/verify-phone');
+      } else {
+        // Employee or customer with verified OTP, redirect to profile
+        console.log('Redirecting to profile page...');
+        toast.success('เข้าสู่ระบบสำเร็จ');
+        router.push('/crm-customer/profile');
+      }
     } catch (error) {
       console.error('=== LINE LOGIN FAILED ===');
       console.error('Error:', error);

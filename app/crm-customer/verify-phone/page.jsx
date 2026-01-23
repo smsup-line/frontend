@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { Phone, Shield } from 'lucide-react';
 import { useForm } from 'react-hook-form';
@@ -17,19 +17,21 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { customerApi } from '@/lib/api';
+import { customerApi, checkOtpApi } from '@/lib/api';
 
 const FormSchema = z.object({
   phone: z.string().min(10, 'กรุณากรอกเบอร์โทรศัพท์ให้ถูกต้อง').regex(/^[0-9]+$/, 'เบอร์โทรศัพท์ต้องเป็นตัวเลขเท่านั้น'),
-  otp: z.string().optional(),
+  otp: z.string().length(5, 'OTP ต้องมี 5 ตัวเลข').regex(/^[0-9]+$/, 'OTP ต้องเป็นตัวเลขเท่านั้น'),
 });
 
 export default function VerifyPhonePage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(false);
   const [sendingOtp, setSendingOtp] = useState(false);
   const [otpSent, setOtpSent] = useState(false);
   const [customerId, setCustomerId] = useState(null);
+  const [phoneFromQuery, setPhoneFromQuery] = useState('');
 
   const form = useForm({
     resolver: zodResolver(FormSchema),
@@ -41,6 +43,13 @@ export default function VerifyPhonePage() {
   });
 
   useEffect(() => {
+    // Get phone from query parameter
+    const phoneParam = searchParams.get('phone');
+    if (phoneParam) {
+      setPhoneFromQuery(phoneParam);
+      form.setValue('phone', phoneParam);
+    }
+
     // Get customer ID from localStorage
     const userStr = localStorage.getItem('user');
     if (userStr) {
@@ -49,11 +58,15 @@ export default function VerifyPhonePage() {
         if (user.id) {
           setCustomerId(user.id);
         }
+        // If phone is in user data and not in query, use it
+        if (!phoneParam && user.phone) {
+          form.setValue('phone', user.phone);
+        }
       } catch (e) {
         console.error('Failed to parse user info:', e);
       }
     }
-  }, []);
+  }, [searchParams, form]);
 
   const sendOTP = async (phone) => {
     try {
@@ -85,40 +98,59 @@ export default function VerifyPhonePage() {
         return;
       }
 
-      // Second step: Verify OTP and update customer
+      // Second step: Verify OTP
       if (!customerId) {
         toast.error('ไม่พบข้อมูลลูกค้า');
         return;
       }
 
-      // TODO: Verify OTP with backend
-      // await otpApi.verifyOTP(data.phone, data.otp);
-      
-      // For now, we'll just update the customer with phone and otp_verify
-      const updateData = {
-        phone: data.phone,
-        otp_verify: true, // Set to true after OTP verification
-      };
+      // Check OTP using new API
+      console.log('Checking OTP for customer:', customerId, 'OTP:', data.otp);
+      const checkResult = await checkOtpApi.check({
+        customer_id: customerId,
+        otp: data.otp,
+      });
 
-      await customerApi.update(customerId, updateData);
+      console.log('OTP check result:', checkResult);
 
-      // Update user in localStorage
-      const userStr = localStorage.getItem('user');
-      if (userStr) {
-        try {
-          const user = JSON.parse(userStr);
-          user.phone = data.phone;
-          localStorage.setItem('user', JSON.stringify(user));
-        } catch (e) {
-          console.error('Failed to update user in localStorage:', e);
+      if (checkResult.otp_verified === true) {
+        // OTP verified successfully
+        // Update customer with phone and otp_verify
+        const updateData = {
+          phone: data.phone,
+          otp_verify: true,
+        };
+
+        await customerApi.update(customerId, updateData);
+
+        // Update user in localStorage
+        const userStr = localStorage.getItem('user');
+        if (userStr) {
+          try {
+            const user = JSON.parse(userStr);
+            user.phone = data.phone;
+            user.otp_verify = true;
+            localStorage.setItem('user', JSON.stringify(user));
+          } catch (e) {
+            console.error('Failed to update user in localStorage:', e);
+          }
         }
-      }
 
-      toast.success('ยืนยันเบอร์โทรศัพท์สำเร็จ');
-      router.push('/crm-customer/profile');
+        toast.success('ยืนยันเบอร์โทรศัพท์สำเร็จ');
+        router.push('/crm-customer/profile');
+      } else {
+        toast.error('รหัส OTP ไม่ถูกต้อง');
+      }
     } catch (error) {
       console.error('Verify phone error:', error);
-      toast.error(error.message || 'ไม่สามารถยืนยันเบอร์โทรศัพท์ได้');
+      const errorMessage = error.message || error.data?.message || 'ไม่สามารถยืนยันเบอร์โทรศัพท์ได้';
+      
+      // Check if error is about invalid OTP
+      if (errorMessage.includes('invalid OTP') || errorMessage.includes('OTP')) {
+        toast.error('รหัส OTP ไม่ถูกต้อง');
+      } else {
+        toast.error(errorMessage);
+      }
     } finally {
       setLoading(false);
     }
@@ -145,7 +177,7 @@ export default function VerifyPhonePage() {
           </h1>
           <p className="text-sm text-muted-foreground text-center">
             {otpSent 
-              ? 'กรุณากรอก OTP ที่ส่งไปยังเบอร์โทรศัพท์ของคุณ'
+              ? 'กรุณากรอก OTP 5 ตัวเลขที่ส่งไปยังเบอร์โทรศัพท์ของคุณ'
               : 'กรุณากรอกเบอร์โทรศัพท์เพื่อยืนยันตัวตน'}
           </p>
         </div>
@@ -179,13 +211,20 @@ export default function VerifyPhonePage() {
                 name="otp"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>OTP *</FormLabel>
+                    <FormLabel>OTP (5 ตัวเลข) *</FormLabel>
                     <FormControl>
                       <Input
-                        placeholder="กรุณากรอก OTP"
+                        placeholder="กรุณากรอก OTP 5 ตัวเลข"
                         {...field}
                         disabled={loading}
-                        maxLength={6}
+                        maxLength={5}
+                        type="tel"
+                        inputMode="numeric"
+                        onChange={(e) => {
+                          // Only allow numbers
+                          const value = e.target.value.replace(/[^0-9]/g, '');
+                          field.onChange(value);
+                        }}
                       />
                     </FormControl>
                     <FormMessage />
@@ -200,11 +239,11 @@ export default function VerifyPhonePage() {
               disabled={loading || sendingOtp}
             >
               {loading 
-                ? 'กำลังยืนยัน...' 
+                ? 'กำลังตรวจสอบ...' 
                 : sendingOtp 
                 ? 'กำลังส่ง OTP...' 
                 : otpSent 
-                ? 'ยืนยัน OTP' 
+                ? 'ตรวจสอบ' 
                 : 'ส่ง OTP'}
             </Button>
 
@@ -227,5 +266,3 @@ export default function VerifyPhonePage() {
     </div>
   );
 }
-
-
