@@ -57,6 +57,7 @@ export async function GET(request, { params }) {
           total_check_tax: '',
           rate_register_point: '',
           rate_total_point: '',
+          sms_sendername: '',
           created_at: null,
           updated_at: null,
         }, { status: 200 }); // Return 200 OK แทน 400/404
@@ -113,6 +114,7 @@ export async function PUT(request, { params }) {
       total_check_tax: body.total_check_tax || '',
       rate_register_point: body.rate_register_point || '',
       rate_total_point: body.rate_total_point || '',
+      sms_sendername: body.sms_sendername || '',
     };
     
     // Validate and stringify JSON
@@ -179,4 +181,3 @@ export async function PUT(request, { params }) {
     );
   }
 }
-

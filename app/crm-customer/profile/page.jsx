@@ -156,8 +156,8 @@ export default function ProfilePage() {
 
   const handleStartEditPhone = () => {
     const currentPhone = userDetails?.phone || user?.phone || '';
-    setPhoneValue(currentPhone);
-    setIsEditingPhone(true);
+    // Redirect to verify phone page with current phone as query parameter
+    router.push(`/crm-customer/verify-phone${currentPhone ? `?phone=${currentPhone}` : ''}`);
   };
   
   const handleCancelEditPhone = () => {

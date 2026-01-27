@@ -43,13 +43,41 @@ export async function POST(request) {
     const authHeader = request.headers.get('authorization');
     const body = await request.json();
     
+    // ดึง sms_sendername จาก settings ถ้ามี shop_id ใน body
+    let smsSenderName = '';
+    if (body.shop_id && authHeader) {
+      try {
+        const settingsResponse = await fetch(`${API_BASE_URL}/settings/${body.shop_id}`, {
+          method: 'GET',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': authHeader,
+          },
+        });
+        
+        if (settingsResponse.ok) {
+          const settingsData = await settingsResponse.json();
+          smsSenderName = settingsData.sms_sendername || '';
+        }
+      } catch (settingsError) {
+        console.warn('Failed to fetch SMS sender name from settings:', settingsError);
+        // Continue without sms_sendername if settings fetch fails
+      }
+    }
+    
+    // เพิ่ม sms_sendername ใน body ถ้ามี
+    const requestBody = {
+      ...body,
+      ...(smsSenderName && { sms_sendername: smsSenderName }),
+    };
+    
     const response = await fetch(`${API_BASE_URL}/sms-templates`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         ...(authHeader && { Authorization: authHeader }),
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(requestBody),
     });
 
     if (!response.ok) {
