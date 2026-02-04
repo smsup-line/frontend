@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
@@ -19,12 +20,12 @@ export async function GET(request) {
     
     console.log('Fetching customer with line_token:', lineToken);
     
-    const response = await fetch(`${API_BASE_URL}/customertokenline?line_token=${encodeURIComponent(lineToken)}`, {
+    const response = await fetchWithTimeout(`${API_BASE_URL}/customertokenline?line_token=${encodeURIComponent(lineToken)}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
       },
-    });
+    }, 10000);
 
     if (!response.ok) {
       const data = await response.json().catch(() => ({}));

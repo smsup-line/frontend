@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
@@ -6,13 +7,13 @@ export async function GET(request) {
   try {
     const authHeader = request.headers.get('authorization');
     
-    const response = await fetch(`${API_BASE_URL}/setting-center`, {
+    const response = await fetchWithTimeout(`${API_BASE_URL}/setting-center`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
         ...(authHeader && { Authorization: authHeader }),
       },
-    });
+    }, 10000);
 
     // ถ้าเป็น 400 หรือ 404 (ยังไม่มี record ในฐานข้อมูล) ให้ return default value แทน error
     if (!response.ok) {
@@ -83,14 +84,14 @@ export async function PUT(request) {
       apiUrl: `${API_BASE_URL}/setting-center`,
     });
     
-    const response = await fetch(`${API_BASE_URL}/setting-center`, {
+    const response = await fetchWithTimeout(`${API_BASE_URL}/setting-center`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
         ...(authHeader && { Authorization: authHeader }),
       },
       body: requestBody,
-    });
+    }, 10000);
 
     if (!response.ok) {
       const responseText = await response.text();

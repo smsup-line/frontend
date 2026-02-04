@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
@@ -21,13 +22,13 @@ export async function GET(request, { params }) {
       );
     }
     
-    const response = await fetch(`${API_BASE_URL}/customers/${id}`, {
+    const response = await fetchWithTimeout(`${API_BASE_URL}/customers/${id}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
         ...(authHeader && { Authorization: authHeader }),
       },
-    });
+    }, 10000);
 
     if (!response.ok) {
       const data = await response.json().catch(() => ({}));
@@ -62,14 +63,14 @@ export async function PUT(request, { params }) {
     
     const body = await request.json();
     
-    const response = await fetch(`${API_BASE_URL}/customers/${id}`, {
+    const response = await fetchWithTimeout(`${API_BASE_URL}/customers/${id}`, {
       method: 'PUT',
       headers: {
         'Content-Type': 'application/json',
         ...(authHeader && { Authorization: authHeader }),
       },
       body: JSON.stringify(body),
-    });
+    }, 10000);
 
     if (!response.ok) {
       const data = await response.json().catch(() => ({}));
@@ -102,13 +103,13 @@ export async function DELETE(request, { params }) {
       );
     }
     
-    const response = await fetch(`${API_BASE_URL}/customers/${id}`, {
+    const response = await fetchWithTimeout(`${API_BASE_URL}/customers/${id}`, {
       method: 'DELETE',
       headers: {
         'Content-Type': 'application/json',
         ...(authHeader && { Authorization: authHeader }),
       },
-    });
+    }, 10000);
 
     if (!response.ok) {
       const data = await response.json().catch(() => ({}));
