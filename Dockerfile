@@ -16,8 +16,11 @@ COPY --from=deps /app/node_modules ./node_modules
 COPY . .
 
 # Set environment variables for build
-ENV NEXT_TELEMETRY_DISABLED 1
-ENV NODE_ENV production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_PRIVATE_STANDALONE=1
+ENV NEXT_TELEMETRY_DEBUG=0
+ENV NEXT_TELEMETRY_SKIP_VERIFY=1
+ENV NODE_ENV=production
 
 # Build the application
 RUN npm run build
@@ -26,8 +29,11 @@ RUN npm run build
 FROM node:20-alpine AS runner
 WORKDIR /app
 
-ENV NODE_ENV production
-ENV NEXT_TELEMETRY_DISABLED 1
+ENV NODE_ENV=production
+ENV NEXT_TELEMETRY_DISABLED=1
+ENV NEXT_PRIVATE_STANDALONE=1
+ENV NEXT_TELEMETRY_DEBUG=0
+ENV NEXT_TELEMETRY_SKIP_VERIFY=1
 
 # Create a non-root user
 RUN addgroup --system --gid 1001 nodejs

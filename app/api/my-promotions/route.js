@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server';
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout';
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 
@@ -25,12 +26,12 @@ export async function GET(request) {
     console.log('Backend URL:', apiUrl);
     console.log('Query params:', { customer_id: customerId, shop_id: shopId, branch_id: branchId });
     
-    const response = await fetch(apiUrl, {
+    const response = await fetchWithTimeout(apiUrl, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
       },
-    });
+    }, 10000);
 
     console.log('My promotions response status:', response.status);
 

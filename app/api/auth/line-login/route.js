@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout';
 
 // Get API base URL from environment variable
 // Use NEXT_PUBLIC_API_URL as primary source
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || 'http://localhost:8080';
+const DEFAULT_TIMEOUT = 10000; // 10 seconds
 
 export async function POST(request) {
   console.log('=== LINE LOGIN API CALLED ===');
@@ -42,12 +44,12 @@ export async function POST(request) {
       const employeeUrl = `${API_BASE_URL}/employeetokenline?line_token=${encodeURIComponent(line_token)}`;
       console.log('Employee check URL:', employeeUrl);
       
-      const employeeResponse = await fetch(employeeUrl, {
+      const employeeResponse = await fetchWithTimeout(employeeUrl, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
-      });
+      }, DEFAULT_TIMEOUT);
       
       console.log('Employee response status:', employeeResponse.status);
 
@@ -117,13 +119,13 @@ export async function POST(request) {
         };
         console.log('JWT request body (employee):', JSON.stringify(jwtRequestBody, null, 2));
         
-        const jwtResponse = await fetch(`${API_BASE_URL}/auth/line-login`, {
+        const jwtResponse = await fetchWithTimeout(`${API_BASE_URL}/auth/line-login`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
           },
           body: JSON.stringify(jwtRequestBody),
-        });
+        }, DEFAULT_TIMEOUT);
 
         console.log('JWT response status (employee):', jwtResponse.status);
         console.log('JWT response headers (employee):', Object.fromEntries(jwtResponse.headers.entries()));
@@ -198,12 +200,12 @@ export async function POST(request) {
     let customerBranchData = null;
     
     try {
-      const customerResponse = await fetch(`${API_BASE_URL}/customertokenline?line_token=${encodeURIComponent(line_token)}`, {
+      const customerResponse = await fetchWithTimeout(`${API_BASE_URL}/customertokenline?line_token=${encodeURIComponent(line_token)}`, {
         method: 'GET',
         headers: {
           'Content-Type': 'application/json',
         },
-      });
+      }, DEFAULT_TIMEOUT);
 
       if (customerResponse.ok) {
         const responseData = await customerResponse.json();
@@ -263,11 +265,11 @@ export async function POST(request) {
           
           console.log('Create customer request body:', JSON.stringify(createRequestBody, null, 2));
 
-          const createResponse = await fetch(createUrl, {
+          const createResponse = await fetchWithTimeout(createUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(createRequestBody),
-          });
+          }, DEFAULT_TIMEOUT);
 
           console.log('Create customer response status:', createResponse.status);
 
@@ -332,13 +334,13 @@ export async function POST(request) {
               };
               console.log('JWT request body:', JSON.stringify(jwtRequestBody, null, 2));
               
-              const jwtResponse = await fetch(`${API_BASE_URL}/auth/line-login`, {
+              const jwtResponse = await fetchWithTimeout(`${API_BASE_URL}/auth/line-login`, {
                 method: 'POST',
                 headers: {
                   'Content-Type': 'application/json',
                 },
                 body: JSON.stringify(jwtRequestBody),
-              });
+              }, DEFAULT_TIMEOUT);
 
               console.log('JWT response status:', jwtResponse.status);
               console.log('JWT response headers:', Object.fromEntries(jwtResponse.headers.entries()));
@@ -391,13 +393,13 @@ export async function POST(request) {
               console.log('Backend API URL:', `${API_BASE_URL}/customertokenline?line_token=${encodeURIComponent(line_token)}`);
               
               // เรียก /api/customertokenline เพื่อดึง settings
-              const customerTokenResponse = await fetch(`${API_BASE_URL}/customertokenline?line_token=${encodeURIComponent(line_token)}`, {
+              const customerTokenResponse = await fetchWithTimeout(`${API_BASE_URL}/customertokenline?line_token=${encodeURIComponent(line_token)}`, {
                 method: 'GET',
                 headers: {
                   'Content-Type': 'application/json',
                   'Authorization': `Bearer ${jwtToken}`,
                 },
-              });
+              }, DEFAULT_TIMEOUT);
 
               console.log('Customer token response status:', customerTokenResponse.status);
               console.log('Customer token response headers:', Object.fromEntries(customerTokenResponse.headers.entries()));
@@ -447,14 +449,14 @@ export async function POST(request) {
                     console.log('Using JWT token for authorization');
                     console.log('Backend API URL:', `${API_BASE_URL}/points`);
                     
-                    const pointsResponse = await fetch(`${API_BASE_URL}/points`, {
+                    const pointsResponse = await fetchWithTimeout(`${API_BASE_URL}/points`, {
                       method: 'POST',
                       headers: {
                         'Content-Type': 'application/json',
                         'Authorization': `Bearer ${jwtToken}`,
                       },
                       body: JSON.stringify(pointsRequestBody),
-                    });
+                    }, DEFAULT_TIMEOUT);
 
                     console.log('Points response status:', pointsResponse.status);
                     console.log('Points response headers:', Object.fromEntries(pointsResponse.headers.entries()));
@@ -579,13 +581,13 @@ export async function POST(request) {
       };
       console.log('JWT request body (existing customer):', JSON.stringify(jwtRequestBody, null, 2));
       
-      const jwtResponse = await fetch(`${API_BASE_URL}/auth/line-login`, {
+      const jwtResponse = await fetchWithTimeout(`${API_BASE_URL}/auth/line-login`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify(jwtRequestBody),
-      });
+      }, DEFAULT_TIMEOUT);
 
       console.log('JWT response status (existing customer):', jwtResponse.status);
       console.log('JWT response headers (existing customer):', Object.fromEntries(jwtResponse.headers.entries()));
