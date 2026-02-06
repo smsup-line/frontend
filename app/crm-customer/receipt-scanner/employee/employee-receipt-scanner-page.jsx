@@ -52,8 +52,18 @@ export default function EmployeeReceiptScannerPage() {
 
   useEffect(() => {
     if (!loading && user && userDetails) {
+      console.log('=== LOAD RECEIPTS TRIGGERED ===');
+      console.log('user:', user);
+      console.log('userDetails:', userDetails);
+      console.log('shop_id:', userDetails?.shop_id);
+      console.log('branch_id:', userDetails?.branch_id);
       loadReceipts();
       // Settings is already loaded from employeetokenline in loadUserData
+    } else {
+      console.log('=== LOAD RECEIPTS NOT TRIGGERED ===');
+      console.log('loading:', loading);
+      console.log('user:', user);
+      console.log('userDetails:', userDetails);
     }
   }, [loading, user, userDetails]);
 
@@ -109,8 +119,14 @@ export default function EmployeeReceiptScannerPage() {
 
 
   const loadReceipts = async () => {
+    console.log('=== loadReceipts CALLED ===');
+    console.log('userDetails:', userDetails);
+    console.log('userDetails?.shop_id:', userDetails?.shop_id);
+    
     if (!userDetails?.shop_id) {
-      console.log('Cannot load receipts: shop_id is missing');
+      console.warn('Cannot load receipts: shop_id is missing');
+      console.warn('userDetails:', userDetails);
+      toast.error('ไม่พบข้อมูล shop_id กรุณาลงชื่อเข้าใช้ใหม่');
       return;
     }
 
@@ -124,10 +140,15 @@ export default function EmployeeReceiptScannerPage() {
       }
 
       // Use employee-receipts endpoint with shop_id and branch_id
+      console.log('Calling receiptsApi.getEmployeeReceipts...');
       const data = await receiptsApi.getEmployeeReceipts(userDetails.shop_id, userDetails.branch_id || null);
       console.log('Employee receipts API response:', data);
-      const receiptsList = Array.isArray(data) ? data : [];
+      console.log('Response type:', typeof data);
+      console.log('Is array:', Array.isArray(data));
+      
+      const receiptsList = Array.isArray(data) ? data : (data?.receipts || data?.data || []);
       console.log('Receipts list length:', receiptsList.length);
+      console.log('Receipts list:', receiptsList);
 
       // Sort by created_at descending (newest first)
       receiptsList.sort((a, b) => {
@@ -138,11 +159,17 @@ export default function EmployeeReceiptScannerPage() {
 
       setReceipts(receiptsList);
       console.log('Employee receipts loaded successfully:', receiptsList.length);
+      
+      if (receiptsList.length === 0) {
+        console.log('No receipts found for shop_id:', userDetails.shop_id, 'branch_id:', userDetails.branch_id);
+      }
     } catch (error) {
       console.error('Failed to load employee receipts:', error);
       console.error('Error message:', error.message);
       console.error('Error status:', error.status);
       console.error('Error data:', error.data);
+      console.error('Error stack:', error.stack);
+      toast.error(error.message || 'ไม่สามารถโหลดข้อมูลใบเสร็จได้');
       setReceipts([]);
     } finally {
       setLoadingReceipts(false);

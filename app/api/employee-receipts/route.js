@@ -1,8 +1,10 @@
 import { NextResponse } from 'next/server';
+import { fetchWithTimeout } from '@/lib/fetch-with-timeout';
 
 // Get API base URL from environment variable
 // Use NEXT_PUBLIC_API_URL as primary source
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || 'http://localhost:8080';
+const DEFAULT_TIMEOUT = 10000; // 10 seconds
 
 export async function GET(request) {
   try {
@@ -46,13 +48,13 @@ export async function GET(request) {
       'Authorization': authHeader ? authHeader.substring(0, 30) + '...' : 'missing',
     });
     
-    const response = await fetch(backendUrl, {
+    const response = await fetchWithTimeout(backendUrl, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': authHeader,
       },
-    });
+    }, DEFAULT_TIMEOUT);
     
     console.log('Backend response status:', response.status);
     console.log('Backend response headers:', Object.fromEntries(response.headers.entries()));
