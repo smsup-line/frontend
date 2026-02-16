@@ -12,6 +12,13 @@ export function AuthGuard({ children }) {
 
   useEffect(() => {
     const checkAuth = () => {
+      // ถ้าเป็นหน้า login ให้อนุญาตให้เข้าถึงได้ทันที (ไม่ต้องตรวจสอบ auth)
+      if (pathname === '/crm-customer/login') {
+        setIsAuthenticated(false); // ไม่ authenticated แต่ให้เข้าถึงหน้า login ได้
+        setIsChecking(false);
+        return;
+      }
+      
       // ตรวจสอบว่ามี token หรือไม่
       const token = localStorage.getItem('auth_token');
       const userStr = localStorage.getItem('user');
@@ -20,9 +27,7 @@ export function AuthGuard({ children }) {
       if (!token || !userStr) {
         setIsAuthenticated(false);
         setIsChecking(false);
-        if (pathname !== '/crm-customer/login') {
-          router.replace('/crm-customer/login');
-        }
+        router.replace('/crm-customer/login');
         return;
       }
 
@@ -101,6 +106,17 @@ export function AuthGuard({ children }) {
   }
 
   // ถ้า authenticated หรือเป็นหน้า login ให้แสดง children
-  return children;
+  // หน้า login สามารถเข้าถึงได้แม้ไม่มี token
+  if (pathname === '/crm-customer/login') {
+    return children;
+  }
+
+  // สำหรับหน้าอื่นๆ ต้อง authenticated
+  if (isAuthenticated) {
+    return children;
+  }
+
+  // Default: แสดง loading
+  return <ScreenLoader />;
 }
 
