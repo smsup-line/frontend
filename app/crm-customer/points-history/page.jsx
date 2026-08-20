@@ -17,6 +17,7 @@ import { Separator } from '@/components/ui/separator';
 import { Content } from '@/components/layouts/crm/components/content';
 import { toast } from 'sonner';
 import { customerTokenLineApi, pointsApi } from '@/lib/api';
+import { getShopId } from '@/lib/utils';
 import Link from 'next/link';
 import { format } from 'date-fns';
 import { Badge } from '@/components/ui/badge';
@@ -57,7 +58,7 @@ export default function PointsHistoryPage() {
         
         if (lineToken) {
           try {
-            const customerData = await customerTokenLineApi.getByLineToken(lineToken);
+            const customerData = await customerTokenLineApi.getByLineToken(lineToken, getShopId());
             console.log('Customer details loaded:', customerData);
             
             if (customerData && customerData.exists && customerData.customer) {

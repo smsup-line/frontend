@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Menu, User, Coins, Gift, UserPlus, LogOut, ScanLine, CheckCircle } from 'lucide-react';
+import { Menu, User, Coins, Gift, UserPlus, LogOut, ScanLine, CheckCircle, Store } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -18,6 +18,7 @@ import { Input } from '@/components/ui/input';
 import { Content } from '@/components/layouts/crm/components/content';
 import { toast } from 'sonner';
 import { authApi, customerApi, employeeApi, customerTokenLineApi, pointsApi, customerPhoneApi } from '@/lib/api';
+import { getShopId } from '@/lib/utils';
 import Link from 'next/link';
 
 export default function ProfilePage() {
@@ -56,11 +57,19 @@ export default function ProfilePage() {
             if (isEmployee) {
               // Fetch employee details using line_token
               console.log('Fetching employee details from /api/employeetokenline?line_token=' + lineToken);
-              const employeeResponse = await employeeApi.getByLineToken(lineToken);
+              const employeeResponse = await employeeApi.getByLineToken(lineToken, getShopId());
               
               // Extract employee data from response
               if (employeeResponse.exists === true && employeeResponse.employee) {
                 setUserDetails(employeeResponse.employee);
+                if (employeeResponse.shop || employeeResponse.branch) {
+                  setUser((prev) => ({
+                    ...prev,
+                    ...userData,
+                    shop: employeeResponse.shop || prev?.shop,
+                    branch: employeeResponse.branch || prev?.branch,
+                  }));
+                }
                 console.log('Employee details loaded:', employeeResponse.employee);
               } else if (employeeResponse.employee) {
                 setUserDetails(employeeResponse.employee);
@@ -69,11 +78,19 @@ export default function ProfilePage() {
             } else {
               // Fetch customer details using line_token
               console.log('Fetching customer details from /api/customertokenline?line_token=' + lineToken);
-              const customerResponse = await customerTokenLineApi.getByLineToken(lineToken);
+              const customerResponse = await customerTokenLineApi.getByLineToken(lineToken, getShopId());
               
               // Extract customer data from response
               if (customerResponse.exists === true && customerResponse.customer) {
                 setUserDetails(customerResponse.customer);
+                if (customerResponse.shop || customerResponse.branch) {
+                  setUser((prev) => ({
+                    ...prev,
+                    ...userData,
+                    shop: customerResponse.shop || prev?.shop,
+                    branch: customerResponse.branch || prev?.branch,
+                  }));
+                }
                 console.log('Customer details loaded:', customerResponse.customer);
               } else if (customerResponse.customer) {
                 setUserDetails(customerResponse.customer);
@@ -107,6 +124,14 @@ export default function ProfilePage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSwitchShop = () => {
+    localStorage.removeItem('auth_token');
+    localStorage.removeItem('user');
+    localStorage.removeItem('shop_id');
+    localStorage.removeItem('branch_id');
+    router.push('/crm-customer/login');
   };
 
   const handleLogout = async () => {
@@ -359,6 +384,18 @@ export default function ProfilePage() {
                   )}
                   
                   <Separator className="my-4" />
+
+                  <Button
+                    variant="ghost"
+                    className="w-full justify-start text-sm sm:text-base"
+                    onClick={() => {
+                      setIsMenuOpen(false);
+                      handleSwitchShop();
+                    }}
+                  >
+                    <Store className="mr-2 h-4 w-4" />
+                    เปลี่ยนร้าน / สาขา
+                  </Button>
                   
                   <Button
                     variant="ghost"
@@ -392,6 +429,12 @@ export default function ProfilePage() {
                 <div className="text-center space-y-1">
                   <h2 className="text-xl sm:text-2xl font-bold break-words">{userName}</h2>
                   <p className="text-sm sm:text-base text-muted-foreground">{isEmployee ? 'พนักงาน' : 'ลูกค้า'}</p>
+                  {(user?.shop?.name || userDetails?.shop_id) && (
+                    <p className="text-xs sm:text-sm text-muted-foreground">
+                      {user?.shop?.name || 'ร้านค้า'}
+                      {user?.branch?.name ? ` · ${user.branch.name}` : ''}
+                    </p>
+                  )}
                 </div>
               </div>
             </div>

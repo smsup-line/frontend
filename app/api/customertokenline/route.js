@@ -10,6 +10,7 @@ export async function GET(request) {
   try {
     const { searchParams } = new URL(request.url);
     const lineToken = searchParams.get('line_token');
+    const shopId = searchParams.get('shop_id');
     
     if (!lineToken) {
       return NextResponse.json(
@@ -20,7 +21,9 @@ export async function GET(request) {
     
     console.log('Fetching customer with line_token:', lineToken);
     
-    const response = await fetchWithTimeout(`${API_BASE_URL}/customertokenline?line_token=${encodeURIComponent(lineToken)}`, {
+    const params = new URLSearchParams({ line_token: lineToken });
+    if (shopId) params.set('shop_id', shopId);
+    const response = await fetchWithTimeout(`${API_BASE_URL}/customertokenline?${params.toString()}`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

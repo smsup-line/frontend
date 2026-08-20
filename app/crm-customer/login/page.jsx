@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { LogIn, QrCode, X } from 'lucide-react';
+import { LogIn, QrCode, X, Store, GitBranch } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { authApi, customerApi } from '@/lib/api';
@@ -16,6 +16,9 @@ import {
 export default function LoginPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
+  const [membershipOptions, setMembershipOptions] = useState(null);
+  const [pendingProfile, setPendingProfile] = useState(null);
+  const [selectingShop, setSelectingShop] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showQRScanner, setShowQRScanner] = useState(false);
   const [scanning, setScanning] = useState(false);
@@ -561,7 +564,6 @@ export default function LoginPage() {
 
       // Get LINE profile
       const profile = await window.liff.getProfile();
-      const idToken = window.liff.getIDToken();
       
       console.log('LINE Profile:', {
         userId: profile.userId,
@@ -569,10 +571,10 @@ export default function LoginPage() {
         pictureUrl: profile.pictureUrl ? 'provided' : 'missing',
       });
 
-      // Get shop_id and branch_id from localStorage (stored from URL on page load)
-      // Note: shop_id is required for customers but may be optional for employees
-      const shopId = localStorage.getItem('shop_id') || '';
-      const branchId = localStorage.getItem('branch_id') || null;
+      const shopIdFromUrl = new URLSearchParams(window.location.search).get('shop_id') || '';
+      const branchIdFromUrl = new URLSearchParams(window.location.search).get('branch_id') || null;
+      const shopId = shopIdFromUrl;
+      const branchId = branchIdFromUrl;
       
       console.log('Shop ID for login:', shopId);
       console.log('Branch ID for login:', branchId);
@@ -624,97 +626,14 @@ export default function LoginPage() {
         return;
       }
 
-      // Determine user type from response
-      const userType = response.user_type || response.role || 'customer';
-      const isEmployee = userType === 'employee';
-      
-      console.log('User type determined:', userType, 'isEmployee:', isEmployee);
-      console.log('Response ID:', response.id);
-
-      // Store user data with shop_id and branch_id
-      // Priority: response.shop_id > response.shop?.id > shopId from URL/localStorage
-      const finalShopId = response.shop_id || response.shop?.id || shopId || null;
-      const finalBranchId = response.branch_id || response.branch?.id || branchId || null;
-        
-        const userData = {
-        ...response,
-        id: response.id || response.data?.id,
-        name: response.name || profile.displayName,
-        avatar_url: response.avatar_url || profile.pictureUrl,
-        line_token: response.line_token || profile.userId,
-        phone: response.phone || null,
-        otp_verify: response.otp_verify || false,
-        role: isEmployee ? 'employee' : 'customer',
-        user_type: userType,
-        shop_id: finalShopId,
-        branch_id: finalBranchId,
-        shop: response.shop,
-        branch: response.branch,
-      };
-      
-      console.log('User data to store:', JSON.stringify(userData, null, 2));
-      console.log('Shop ID to store:', finalShopId);
-      console.log('Branch ID to store:', finalBranchId);
-
-      // Store authentication data
-      // Use JWT token from backend if available, otherwise use LINE idToken as fallback
-      const jwtToken = response.token || response.access_token || response.jwt;
-      const authToken = jwtToken || idToken;
-      
-      console.log('Storing auth token:', jwtToken ? 'JWT token' : 'LINE idToken');
-      localStorage.setItem('auth_token', authToken);
-        localStorage.setItem('user', JSON.stringify(userData));
-      
-      // Store line_token for later use
-      const lineToken = userData.line_token || profile.userId;
-      if (lineToken) {
-        localStorage.setItem('line_token', lineToken);
-        console.log('Line token stored in localStorage:', lineToken);
-      }
-      
-      // Store shop_id and branch_id separately for easy access in other functions
-      if (finalShopId) {
-        localStorage.setItem('shop_id', finalShopId);
-        console.log('Shop ID stored in localStorage:', finalShopId);
-      } else {
-        console.log('No shop_id to store');
-      }
-      
-      if (finalBranchId) {
-        localStorage.setItem('branch_id', finalBranchId);
-        console.log('Branch ID stored in localStorage:', finalBranchId);
-      } else {
-        console.log('No branch_id to store');
+      if (response?.requires_selection && Array.isArray(response.options) && response.options.length > 0) {
+        setPendingProfile(profile);
+        setMembershipOptions(response.options);
+        setLoading(false);
+        return;
       }
 
-      // After login successful, redirect to profile for both employee and customer
-      console.log('=== LOGIN SUCCESSFUL ===');
-      console.log('Redirecting to profile page...');
-      
-      // Clean up shop_id and branch_id from URL (keep in localStorage for session)
-      const currentUrl = new URL(window.location.href);
-      if (currentUrl.searchParams.has('shop_id') || currentUrl.searchParams.has('branch_id')) {
-        currentUrl.searchParams.delete('shop_id');
-        currentUrl.searchParams.delete('branch_id');
-        window.history.replaceState({}, '', currentUrl.pathname);
-        console.log('Cleaned up shop_id/branch_id from URL');
-      }
-
-      // Check otp_verify for customers only
-      const otpVerified = userData.otp_verify || false;
-      const isCustomer = !isEmployee;
-      
-      if (isCustomer && !otpVerified) {
-        // Customer hasn't verified OTP, redirect to verify-phone page
-        console.log('Customer OTP not verified, redirecting to verify-phone page');
-        toast.warning('กรุณาเพิ่มหมายเลขโทรศัพท์และยืนยัน OTP');
-        router.push('/crm-customer/verify-phone');
-      } else {
-        // Employee or customer with verified OTP, redirect to profile
-        console.log('Redirecting to profile page...');
-        toast.success('เข้าสู่ระบบสำเร็จ');
-        router.push('/crm-customer/profile');
-      }
+      completeLogin(response, profile, shopId, branchId);
     } catch (error) {
       console.error('=== LINE LOGIN FAILED ===');
       console.error('Error:', error);
@@ -725,6 +644,86 @@ export default function LoginPage() {
     } finally {
       console.log('=== HANDLE LINE LOGIN FINISHED ===');
       setLoading(false);
+    }
+  };
+
+  const completeLogin = (response, profile, shopId, branchId) => {
+    const userType = response.user_type || response.role || 'customer';
+    const isEmployee = userType === 'employee';
+    const finalShopId = response.shop_id || response.shop?.id || shopId || null;
+    const finalBranchId = response.branch_id || response.branch?.id || branchId || null;
+    const idToken = typeof window !== 'undefined' && window.liff?.getIDToken ? window.liff.getIDToken() : null;
+
+    const userData = {
+      ...response,
+      id: response.id || response.data?.id,
+      name: response.name || profile.displayName,
+      avatar_url: response.avatar_url || profile.pictureUrl,
+      line_token: response.line_token || profile.userId,
+      phone: response.phone || null,
+      otp_verify: response.otp_verify || false,
+      role: isEmployee ? 'employee' : 'customer',
+      user_type: userType,
+      shop_id: finalShopId,
+      branch_id: finalBranchId,
+      shop: response.shop,
+      branch: response.branch,
+    };
+
+    const jwtToken = response.token || response.access_token || response.jwt;
+    localStorage.setItem('auth_token', jwtToken || idToken);
+    localStorage.setItem('user', JSON.stringify(userData));
+    localStorage.setItem('line_token', userData.line_token || profile.userId);
+    if (finalShopId) localStorage.setItem('shop_id', finalShopId);
+    if (finalBranchId) {
+      localStorage.setItem('branch_id', finalBranchId);
+    } else {
+      localStorage.removeItem('branch_id');
+    }
+
+    const currentUrl = new URL(window.location.href);
+    if (currentUrl.searchParams.has('shop_id') || currentUrl.searchParams.has('branch_id')) {
+      currentUrl.searchParams.delete('shop_id');
+      currentUrl.searchParams.delete('branch_id');
+      window.history.replaceState({}, '', currentUrl.pathname);
+    }
+
+    setMembershipOptions(null);
+    setPendingProfile(null);
+
+    const otpVerified = userData.otp_verify || false;
+    if (!isEmployee && !otpVerified) {
+      toast.warning('กรุณาเพิ่มหมายเลขโทรศัพท์และยืนยัน OTP');
+      router.push('/crm-customer/verify-phone');
+      return;
+    }
+
+    toast.success('เข้าสู่ระบบสำเร็จ');
+    router.push('/crm-customer/profile');
+  };
+
+  const handleSelectMembership = async (option) => {
+    if (!pendingProfile || selectingShop) return;
+    try {
+      setSelectingShop(true);
+      const response = await authApi.lineLogin(
+        pendingProfile.userId,
+        pendingProfile.displayName,
+        pendingProfile.pictureUrl || '',
+        option.shop_id,
+        option.branch_id,
+        option.user_type,
+        option.user_id
+      );
+      if (response?.requires_selection && Array.isArray(response.options) && response.options.length > 0) {
+        setMembershipOptions(response.options);
+        return;
+      }
+      completeLogin(response, pendingProfile, option.shop_id, option.branch_id);
+    } catch (error) {
+      toast.error(error.message || 'ไม่สามารถเข้าสู่ร้านที่เลือกได้');
+    } finally {
+      setSelectingShop(false);
     }
   };
 
@@ -1047,6 +1046,56 @@ export default function LoginPage() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background p-4">
       <div className="w-full max-w-md space-y-8 rounded-lg border border-border bg-card p-8 shadow-lg mx-auto">
+        {membershipOptions ? (
+          <>
+            <div className="flex flex-col items-center space-y-2">
+              <div className="rounded-full bg-primary/10 p-3">
+                <Store className="size-8 text-primary" />
+              </div>
+              <h1 className="text-2xl font-bold">เลือกร้าน / สาขา</h1>
+              <p className="text-sm text-muted-foreground text-center">
+                บัญชี LINE นี้ลงทะเบียนไว้แล้วหลายร้าน กรุณาเลือกร้านและสาขาที่ต้องการเข้าใช้งาน
+              </p>
+            </div>
+            <div className="space-y-3">
+              {membershipOptions.map((option) => (
+                <button
+                  key={`${option.user_type}-${option.user_id}`}
+                  type="button"
+                  disabled={selectingShop}
+                  onClick={() => handleSelectMembership(option)}
+                  className="w-full rounded-lg border border-border p-4 text-left transition hover:border-primary hover:bg-primary/5 disabled:opacity-60"
+                >
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0 space-y-1">
+                      <p className="font-semibold truncate">{option.shop_name}</p>
+                      <p className="text-sm text-muted-foreground flex items-center gap-1">
+                        <GitBranch className="h-3.5 w-3.5 shrink-0" />
+                        {option.branch_name || 'ทุกสาขา'}
+                      </p>
+                    </div>
+                    <span className={`shrink-0 rounded-full px-2 py-0.5 text-xs ${option.user_type === 'employee' ? 'bg-blue-100 text-blue-700' : 'bg-emerald-100 text-emerald-700'}`}>
+                      {option.user_type === 'employee' ? 'พนักงาน' : 'ลูกค้า'}
+                    </span>
+                  </div>
+                </button>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                onClick={() => {
+                  setMembershipOptions(null);
+                  setPendingProfile(null);
+                }}
+                disabled={selectingShop}
+              >
+                ย้อนกลับ
+              </Button>
+            </div>
+          </>
+        ) : (
+          <>
         <div className="flex flex-col items-center space-y-2">
           <div className="rounded-full bg-primary/10 p-3">
             <LogIn className="size-8 text-primary" />
@@ -1093,6 +1142,8 @@ export default function LoginPage() {
             โดยการเข้าสู่ระบบ คุณยอมรับเงื่อนไขการใช้งานและนโยบายความเป็นส่วนตัว
           </p>
         </div>
+          </>
+        )}
       </div>
 
       {/* QR Code Scanner Dialog */}

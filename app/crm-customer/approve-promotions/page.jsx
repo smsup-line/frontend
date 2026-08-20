@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { Content } from '@/components/layouts/crm/components/content';
 import { toast } from 'sonner';
 import { promotionHistoryApi, employeeApi, customerTokenLineApi, pointsApi, approvePromotionApi, customerNameApi, promotionNameApi } from '@/lib/api';
+import { getShopId } from '@/lib/utils';
 import Link from 'next/link';
 import { format } from 'date-fns';
 
@@ -72,7 +73,7 @@ export default function ApprovePromotionsPage() {
         
         if (lineToken) {
           try {
-            const employeeData = await employeeApi.getByLineToken(lineToken);
+            const employeeData = await employeeApi.getByLineToken(lineToken, getShopId());
             console.log('Employee details loaded:', employeeData);
             
             if (employeeData && employeeData.exists && employeeData.employee) {

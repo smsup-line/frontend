@@ -46,7 +46,7 @@ export default function CustomerPromotionsPage() {
         const lineToken = userData.line_token || localStorage.getItem('line_token');
         if (lineToken && userData.role !== 'employee') {
           try {
-            const customerResponse = await customerTokenLineApi.getByLineToken(lineToken);
+            const customerResponse = await customerTokenLineApi.getByLineToken(lineToken, getShopId());
             let customer = null;
             if (customerResponse.exists === true && customerResponse.customer) {
               customer = customerResponse.customer;

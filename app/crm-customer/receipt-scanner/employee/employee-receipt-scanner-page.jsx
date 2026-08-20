@@ -25,6 +25,8 @@ import { Badge } from '@/components/ui/badge';
 import { Content } from '@/components/layouts/crm/components/content';
 import { toast } from 'sonner';
 import { receiptsApi, employeeApi, pointsApi } from '@/lib/api';
+import { getShopId } from '@/lib/utils';
+import { extractAmountFromReceipt } from '@/lib/receipt-ocr';
 import Link from 'next/link';
 import { createWorker } from 'tesseract.js';
 
@@ -93,7 +95,7 @@ export default function EmployeeReceiptScannerPage() {
         if (lineToken) {
           try {
             console.log('Loading employee details and settings from employeetokenline');
-            const employeeResponse = await employeeApi.getByLineToken(lineToken);
+            const employeeResponse = await employeeApi.getByLineToken(lineToken, getShopId());
             if (employeeResponse.exists === true && employeeResponse.employee) {
               setUserDetails(employeeResponse.employee);
               const settingsData = employeeResponse.settings || null;
@@ -176,52 +178,6 @@ export default function EmployeeReceiptScannerPage() {
     }
   };
 
-  const extractTotalCheckTax = (text) => {
-    // Patterns to find total amount in Thai receipts
-    // Common patterns: "รวม", "ยอดรวม", "รวมทั้งสิ้น", "Total", "TOTAL", etc.
-    const lines = text.split('\n');
-    
-    // Look for lines containing "รวม" or "Total" followed by numbers
-    for (let i = lines.length - 1; i >= 0; i--) {
-      const line = lines[i].trim();
-      
-      // Check for Thai patterns
-      if (line.match(/รวม.*?[\d,]+\.?\d*/i) || line.match(/ยอดรวม.*?[\d,]+\.?\d*/i)) {
-        const match = line.match(/[\d,]+\.?\d*/);
-        if (match) {
-          const amount = parseFloat(match[0].replace(/,/g, ''));
-          if (amount > 0) {
-            return amount;
-          }
-        }
-      }
-      
-      // Check for English patterns
-      if (line.match(/total.*?[\d,]+\.?\d*/i)) {
-        const match = line.match(/[\d,]+\.?\d*/);
-        if (match) {
-          const amount = parseFloat(match[0].replace(/,/g, ''));
-          if (amount > 0) {
-            return amount;
-          }
-        }
-      }
-      
-      // Check for lines that are just numbers (likely the total at the end)
-      if (i === lines.length - 1 || i === lines.length - 2) {
-        const numberMatch = line.match(/^[\d,]+\.?\d*$/);
-        if (numberMatch) {
-          const amount = parseFloat(numberMatch[0].replace(/,/g, ''));
-          if (amount > 0 && amount < 10000000) { // Reasonable upper limit
-            return amount;
-          }
-        }
-      }
-    }
-    
-    return null;
-  };
-
   const performOCR = async (imageUrl) => {
     try {
       setOcrLoading(true);
@@ -235,7 +191,7 @@ export default function EmployeeReceiptScannerPage() {
 
       console.log('OCR Text:', text);
       
-      const extractedAmount = extractTotalCheckTax(text);
+      const extractedAmount = extractAmountFromReceipt(text, settings?.total_check_tax || '');
       
       if (extractedAmount) {
         setOcrResult({

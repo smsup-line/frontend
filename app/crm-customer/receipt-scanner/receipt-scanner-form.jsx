@@ -18,6 +18,8 @@ import { Badge } from '@/components/ui/badge';
 import { Content } from '@/components/layouts/crm/components/content';
 import { toast } from 'sonner';
 import { receiptsApi, customerTokenLineApi } from '@/lib/api';
+import { getShopId } from '@/lib/utils';
+import { extractAmountFromReceipt } from '@/lib/receipt-ocr';
 import { uploadToCloudinary, getImagePreview, revokeImagePreview } from '@/lib/cloudinary';
 import Link from 'next/link';
 import { createWorker } from 'tesseract.js';
@@ -39,6 +41,7 @@ export default function ReceiptScannerForm() {
   const [totalCheckTax, setTotalCheckTax] = useState(null);
   const [ocrLoading, setOcrLoading] = useState(false);
   const [ocrError, setOcrError] = useState(null);
+  const [receiptKeyword, setReceiptKeyword] = useState('');
   const fileInputRef = useRef(null);
   const videoRef = useRef(null);
 
@@ -72,12 +75,14 @@ export default function ReceiptScannerForm() {
         const lineToken = userData.line_token || localStorage.getItem('line_token');
         if (lineToken) {
           try {
-            const customerResponse = await customerTokenLineApi.getByLineToken(lineToken);
+            const customerResponse = await customerTokenLineApi.getByLineToken(lineToken, getShopId());
             if (customerResponse.exists === true && customerResponse.customer) {
               setUserDetails(customerResponse.customer);
             } else if (customerResponse.customer) {
               setUserDetails(customerResponse.customer);
             }
+            const keyword = customerResponse?.settings?.total_check_tax || '';
+            setReceiptKeyword(keyword);
           } catch (error) {
             console.error('Failed to load customer details:', error);
           }
@@ -146,52 +151,6 @@ export default function ReceiptScannerForm() {
     }
   };
 
-  const extractTotalCheckTax = (text) => {
-    // Patterns to find total amount in Thai receipts
-    // Common patterns: "รวม", "ยอดรวม", "รวมทั้งสิ้น", "Total", "TOTAL", etc.
-    const lines = text.split('\n');
-    
-    // Look for lines containing "รวม" or "Total" followed by numbers
-    for (let i = lines.length - 1; i >= 0; i--) {
-      const line = lines[i].trim();
-      
-      // Check for Thai patterns
-      if (line.match(/รวม.*?[\d,]+\.?\d*/i) || line.match(/ยอดรวม.*?[\d,]+\.?\d*/i)) {
-        const match = line.match(/[\d,]+\.?\d*/);
-        if (match) {
-          const amount = parseFloat(match[0].replace(/,/g, ''));
-          if (amount > 0) {
-            return amount;
-          }
-        }
-      }
-      
-      // Check for English patterns
-      if (line.match(/total.*?[\d,]+\.?\d*/i)) {
-        const match = line.match(/[\d,]+\.?\d*/);
-        if (match) {
-          const amount = parseFloat(match[0].replace(/,/g, ''));
-          if (amount > 0) {
-            return amount;
-          }
-        }
-      }
-      
-      // Check for lines that are just numbers (likely the total at the end)
-      if (i === lines.length - 1 || i === lines.length - 2) {
-        const numberMatch = line.match(/^[\d,]+\.?\d*$/);
-        if (numberMatch) {
-          const amount = parseFloat(numberMatch[0].replace(/,/g, ''));
-          if (amount > 0 && amount < 10000000) { // Reasonable upper limit
-            return amount;
-          }
-        }
-      }
-    }
-    
-    return null;
-  };
-
   const performOCR = async (imageFile) => {
     try {
       setOcrLoading(true);
@@ -204,14 +163,16 @@ export default function ReceiptScannerForm() {
       await worker.terminate();
 
       console.log('OCR Text:', text);
+      console.log('Receipt keyword:', receiptKeyword);
       
-      const extractedAmount = extractTotalCheckTax(text);
+      const extractedAmount = extractAmountFromReceipt(text, receiptKeyword);
       
       if (extractedAmount) {
         setTotalCheckTax(extractedAmount);
         toast.success(`อ่านยอดเงินได้: ${extractedAmount.toLocaleString('th-TH')} บาท`);
       } else {
-        setOcrError('ไม่สามารถอ่านยอดเงินจากใบเสร็จได้ กรุณาลองใหม่อีกครั้ง');
+        const keywordHint = receiptKeyword ? ` ตามข้อความ "${receiptKeyword}"` : '';
+        setOcrError(`ไม่สามารถอ่านยอดเงินจากใบเสร็จได้${keywordHint} กรุณาลองใหม่อีกครั้ง`);
         toast.error('ไม่สามารถอ่านยอดเงินจากใบเสร็จได้');
       }
     } catch (error) {

@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { Content } from '@/components/layouts/crm/components/content';
 import { toast } from 'sonner';
 import { myPromotionsApi, customerTokenLineApi } from '@/lib/api';
+import { getShopId } from '@/lib/utils';
 import Link from 'next/link';
 
 export default function MyPromotionsPage() {
@@ -49,7 +50,7 @@ export default function MyPromotionsPage() {
         const lineToken = userData.line_token || localStorage.getItem('line_token');
         if (lineToken && userData.role !== 'employee') {
           try {
-            const customerResponse = await customerTokenLineApi.getByLineToken(lineToken);
+            const customerResponse = await customerTokenLineApi.getByLineToken(lineToken, getShopId());
             if (customerResponse && customerResponse.exists && customerResponse.customer) {
               setUser(customerResponse.customer);
             } else if (customerResponse && customerResponse.customer) {

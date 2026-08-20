@@ -17,6 +17,7 @@ import { Separator } from '@/components/ui/separator';
 import { Content } from '@/components/layouts/crm/components/content';
 import { toast } from 'sonner';
 import { employeeApi, authApi } from '@/lib/api';
+import { getShopId } from '@/lib/utils';
 import Link from 'next/link';
 import PromotionsList from './promotions-list';
 import { NewPromotionSheet } from './new-promotion-sheet';
@@ -56,7 +57,7 @@ export default function EmployeePromotionsPage() {
         
         if (lineToken) {
           try {
-            const employeeData = await employeeApi.getByLineToken(lineToken);
+            const employeeData = await employeeApi.getByLineToken(lineToken, getShopId());
             console.log('Employee details loaded:', employeeData);
             
             if (employeeData && employeeData.exists && employeeData.employee) {
