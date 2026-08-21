@@ -19,10 +19,9 @@ import { Content } from '@/components/layouts/crm/components/content';
 import { toast } from 'sonner';
 import { receiptsApi, customerTokenLineApi } from '@/lib/api';
 import { getShopId } from '@/lib/utils';
-import { extractAmountFromReceipt } from '@/lib/receipt-ocr';
+import { readReceiptAmount } from '@/lib/receipt-ocr';
 import { uploadToCloudinary, getImagePreview, revokeImagePreview } from '@/lib/cloudinary';
 import Link from 'next/link';
-import { createWorker } from 'tesseract.js';
 
 export default function ReceiptScannerForm() {
   const router = useRouter();
@@ -157,15 +156,9 @@ export default function ReceiptScannerForm() {
       setOcrError(null);
       setTotalCheckTax(null);
 
-      const worker = await createWorker('tha+eng');
-      
-      const { data: { text } } = await worker.recognize(imageFile);
-      await worker.terminate();
-
+      const { text, amount: extractedAmount } = await readReceiptAmount(imageFile, receiptKeyword);
       console.log('OCR Text:', text);
       console.log('Receipt keyword:', receiptKeyword);
-      
-      const extractedAmount = extractAmountFromReceipt(text, receiptKeyword);
       
       if (extractedAmount) {
         setTotalCheckTax(extractedAmount);
