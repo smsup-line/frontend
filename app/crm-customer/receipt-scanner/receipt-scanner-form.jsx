@@ -15,6 +15,7 @@ import {
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
+import { Input } from '@/components/ui/input';
 import { Content } from '@/components/layouts/crm/components/content';
 import { toast } from 'sonner';
 import { receiptsApi, customerTokenLineApi } from '@/lib/api';
@@ -330,9 +331,9 @@ export default function ReceiptScannerForm() {
       return;
     }
 
-    if (!totalCheckTax) {
-      toast.error('กรุณารอให้ระบบอ่านยอดเงินจากใบเสร็จก่อน');
-          return;
+    if (totalCheckTax == null || Number.isNaN(Number(totalCheckTax)) || Number(totalCheckTax) <= 0) {
+      toast.error('กรุณากรอกยอดเงิน');
+      return;
     }
 
     const displayUser = userDetails || user;
@@ -619,20 +620,30 @@ export default function ReceiptScannerForm() {
                         </div>
                       )}
                 
-                {!ocrLoading && totalCheckTax && (
-                  <div className="p-3 bg-success/10 border border-success/20 rounded-lg">
-                    <div className="flex items-center justify-between">
-                      <span className="text-sm font-medium text-success">ยอดเงินที่อ่านได้:</span>
-                      <span className="text-lg font-bold text-success">
-                        {totalCheckTax.toLocaleString('th-TH')} บาท
-                      </span>
-                    </div>
-                  </div>
-                )}
-                
-                {!ocrLoading && ocrError && (
-                  <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg">
-                    <p className="text-sm text-destructive">{ocrError}</p>
+                {!ocrLoading && imageFile && (
+                  <div className="space-y-2">
+                    <label className="text-sm font-medium">ยอดเงิน (บาท)</label>
+                    <Input
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      inputMode="decimal"
+                      placeholder="0.00"
+                      value={totalCheckTax ?? ''}
+                      onChange={(e) => {
+                        const value = e.target.value;
+                        if (value === '') {
+                          setTotalCheckTax(null);
+                          return;
+                        }
+                        const amount = parseFloat(value);
+                        setTotalCheckTax(Number.isNaN(amount) ? null : amount);
+                      }}
+                    />
+                    <p className="text-xs text-muted-foreground">สามารถพิมพ์แก้ไขยอดเงินได้</p>
+                    {ocrError && (
+                      <p className="text-sm text-destructive">{ocrError}</p>
+                    )}
                   </div>
                 )}
                 

@@ -333,6 +333,17 @@ export default function ProfilePage() {
                           สแกนใบเสร็จ
                         </Button>
                       </Link>
+                      
+                      <Link href="/crm-customer/give-points">
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start text-sm sm:text-base"
+                          onClick={() => setIsMenuOpen(false)}
+                        >
+                          <Coins className="mr-2 h-4 w-4" />
+                          ให้คะแนนสะสม
+                        </Button>
+                      </Link>
                     </>
                   ) : (
                     // Customer menu
@@ -562,6 +573,20 @@ export default function ProfilePage() {
                       <div className="min-w-0 flex-1">
                         <p className="font-semibold text-sm sm:text-base">ยืนยันโปรโมชั่น</p>
                         <p className="text-xs sm:text-sm text-muted-foreground">อนุมัติโปรโมชั่น</p>
+                      </div>
+                    </div>
+                  </div>
+                </Link>
+                
+                <Link href="/crm-customer/give-points">
+                  <div className="rounded-lg border border-border bg-card p-3 sm:p-4 shadow-sm hover:bg-accent transition-colors cursor-pointer">
+                    <div className="flex items-center gap-2 sm:gap-3">
+                      <div className="rounded-full bg-primary/10 p-1.5 sm:p-2 flex-shrink-0">
+                        <Coins className="h-4 w-4 sm:h-5 sm:w-5 text-primary" />
+                      </div>
+                      <div className="min-w-0 flex-1">
+                        <p className="font-semibold text-sm sm:text-base">ให้คะแนนสะสม</p>
+                        <p className="text-xs sm:text-sm text-muted-foreground">กรอกคะแนนให้ลูกค้า</p>
                       </div>
                     </div>
                   </div>

@@ -2,8 +2,9 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Menu, ScanLine, Check, X, Eye, Loader2, User, UserPlus, LogOut, RefreshCw, CheckCircle } from 'lucide-react';
+import { Menu, ScanLine, Check, X, Eye, Loader2, User, UserPlus, LogOut, RefreshCw, CheckCircle, Coins } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
   Sheet,
@@ -46,6 +47,7 @@ export default function EmployeeReceiptScannerPage() {
   const [ocrLoading, setOcrLoading] = useState(false);
   const [ocrResult, setOcrResult] = useState(null);
   const [ocrError, setOcrError] = useState(null);
+  const [approvalAmount, setApprovalAmount] = useState('');
 
   useEffect(() => {
     loadUserData();
@@ -194,6 +196,7 @@ export default function EmployeeReceiptScannerPage() {
           text,
           amount: extractedAmount,
         });
+        setApprovalAmount(extractedAmount.toString());
         toast.success(`อ่านยอดเงินได้: ${extractedAmount.toLocaleString('th-TH')} บาท`);
       } else {
         setOcrError('ไม่สามารถอ่านยอดเงินจากใบเสร็จได้');
@@ -235,6 +238,7 @@ export default function EmployeeReceiptScannerPage() {
     // Always open popup modal for approval confirmation
     // Even if total_check_tax is missing, user can still approve
     console.log('Opening approval dialog for receipt:', receipt.id);
+    setApprovalAmount(receipt.total_check_tax ? String(receipt.total_check_tax) : '');
     setReceiptToApprove(receipt);
     setIsApprovalDialogOpen(true);
     console.log('Dialog opened, isApprovalDialogOpen set to true');
@@ -243,14 +247,7 @@ export default function EmployeeReceiptScannerPage() {
   const handleApproveConfirm = async () => {
     if (!receiptToApprove) return;
 
-    // Use total_check_tax from receipt data or OCR result
-    let totalCheckTax = receiptToApprove.total_check_tax || '';
-    
-    // If no total_check_tax in receipt but we have OCR result, use it
-    if (!totalCheckTax && ocrResult && ocrResult.amount) {
-      totalCheckTax = ocrResult.amount.toString();
-    }
-    
+    const totalCheckTax = approvalAmount || receiptToApprove.total_check_tax || ocrResult?.amount || '';
     const totalCheckTaxValue = totalCheckTax ? parseFloat(totalCheckTax.toString()) : null;
 
     // Get total_check_tax value (can be 0 or null if OCR failed)
@@ -267,6 +264,7 @@ export default function EmployeeReceiptScannerPage() {
     await handleUpdateStatus(receiptToApprove.id, 'approved', finalTotalCheckTax);
     setReceiptToApprove(null);
     setOcrResult(null);
+    setApprovalAmount('');
   };
 
   const handleUpdateStatus = async (receiptId, newStatus, totalCheckTaxValue = null) => {
@@ -465,6 +463,17 @@ export default function EmployeeReceiptScannerPage() {
                     >
                       <ScanLine className="mr-2 h-4 w-4" />
                       สแกนใบเสร็จ
+                    </Button>
+                  </Link>
+                  
+                  <Link href="/crm-customer/give-points">
+                    <Button
+                      variant="ghost"
+                      className="w-full justify-start text-sm sm:text-base"
+                      onClick={() => setIsMenuOpen(false)}
+                    >
+                      <Coins className="mr-2 h-4 w-4" />
+                      ให้คะแนนสะสม
                     </Button>
                   </Link>
                   
@@ -697,6 +706,7 @@ export default function EmployeeReceiptScannerPage() {
         setIsApprovalDialogOpen(open);
         if (!open) {
           setReceiptToApprove(null);
+          setApprovalAmount('');
         }
       }}>
         <DialogContent className="max-w-md">
@@ -705,15 +715,7 @@ export default function EmployeeReceiptScannerPage() {
           </DialogHeader>
           <div className="space-y-4 py-4">
             {receiptToApprove && (() => {
-              // Use total_check_tax from receipt data or OCR result
-              let totalCheckTax = receiptToApprove.total_check_tax || '';
-              
-              // If no total_check_tax in receipt but we have OCR result, use it
-              if (!totalCheckTax && ocrResult && ocrResult.amount) {
-                totalCheckTax = ocrResult.amount.toString();
-              }
-              
-              const totalCheckTaxValue = totalCheckTax ? parseFloat(totalCheckTax.toString()) : 0;
+              const totalCheckTaxValue = approvalAmount ? parseFloat(approvalAmount.toString()) : 0;
               const rateTotalPoint = settings?.rate_total_point || '';
               const rateTotalPointValue = rateTotalPoint ? parseFloat(rateTotalPoint.toString()) : 0;
               const pointsToAdd = totalCheckTaxValue > 0 && rateTotalPointValue > 0 
@@ -724,7 +726,7 @@ export default function EmployeeReceiptScannerPage() {
                 <>
                   <div className="space-y-2">
                     <div className="flex items-center justify-between">
-                      <Label>ยอดรวม (บาท)</Label>
+                      <Label htmlFor="approval-amount">ยอดรวม (บาท)</Label>
                       {receiptToApprove.receipt_image_url && (
                         <Button
                           type="button"
@@ -753,16 +755,21 @@ export default function EmployeeReceiptScannerPage() {
                         <span className="text-sm text-muted-foreground">กำลังอ่านยอดเงินจากใบเสร็จ...</span>
                       </div>
                     )}
-                    <div className="rounded-lg border border-border bg-muted p-4">
-                      <p className="text-2xl font-bold text-primary">
-                        {totalCheckTaxValue > 0
-                          ? totalCheckTaxValue.toLocaleString('th-TH', { minimumFractionDigits: 2, maximumFractionDigits: 2 })
-                          : 'ไม่สามารถอ่านได้'}
-                      </p>
-                    </div>
-                    {totalCheckTaxValue <= 0 && !ocrLoading && (
+                    <Input
+                      id="approval-amount"
+                      type="number"
+                      step="0.01"
+                      min="0"
+                      inputMode="decimal"
+                      placeholder="0.00"
+                      value={approvalAmount}
+                      onChange={(e) => setApprovalAmount(e.target.value)}
+                      className="h-12 text-lg font-semibold"
+                    />
+                    <p className="text-xs text-muted-foreground">สามารถพิมพ์แก้ไขยอดเงินได้</p>
+                    {(!approvalAmount || totalCheckTaxValue <= 0) && !ocrLoading && (
                       <p className="text-xs text-destructive">
-                        ไม่สามารถอ่านยอดรวมจากใบเสร็จได้ กรุณากดปุ่ม "อ่านยอดเงินใหม่" เพื่อลองอีกครั้ง
+                        กรุณากรอกยอดเงิน หรือกดปุ่ม "อ่านยอดเงินใหม่"
                       </p>
                     )}
                   </div>

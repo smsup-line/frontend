@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Menu, User, Gift, UserPlus, LogOut, ScanLine, CheckCircle, Plus } from 'lucide-react';
+import { Menu, User, Gift, UserPlus, LogOut, ScanLine, CheckCircle, Plus, Coins } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import {
   Sheet,
@@ -209,6 +209,17 @@ export default function EmployeePromotionsPage() {
                       >
                         <ScanLine className="mr-2 h-4 w-4" />
                         สแกนใบเสร็จ
+                      </Button>
+                    </Link>
+                    
+                    <Link href="/crm-customer/give-points">
+                      <Button
+                        variant="ghost"
+                        className="w-full justify-start text-sm sm:text-base"
+                        onClick={() => setIsMenuOpen(false)}
+                      >
+                        <Coins className="mr-2 h-4 w-4" />
+                        ให้คะแนนสะสม
                       </Button>
                     </Link>
                     
