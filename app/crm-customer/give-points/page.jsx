@@ -138,7 +138,7 @@ export default function GivePointsPage() {
         detail: trimmedDetail,
         points: pointsValue,
       });
-      toast.success(`เพิ่มคะแนนสะสม ${pointsValue} คะแนนให้ ${foundCustomer.name || 'ลูกค้า'} สำเร็จ`);
+      toast.success(`เพิ่ม ${pointsValue} คะแนนให้ ${foundCustomer.name || 'ลูกค้า'} แล้ว ลูกค้าได้รับทันที`);
       setPhone('');
       setPoints('');
       setDetail('');
