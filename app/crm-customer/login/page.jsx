@@ -575,6 +575,21 @@ export default function LoginPage() {
       const branchIdFromUrl = new URLSearchParams(window.location.search).get('branch_id') || null;
       const shopId = shopIdFromUrl;
       const branchId = branchIdFromUrl;
+
+      let storedUserId = null;
+      let storedUserType = null;
+      try {
+        const stored = JSON.parse(localStorage.getItem('user') || 'null');
+        if (stored?.id) {
+          const storedShop = stored.shop_id || stored.shop?.id;
+          if (!shopId || !storedShop || String(storedShop) === String(shopId)) {
+            storedUserId = stored.id;
+            storedUserType = stored.user_type || stored.role || null;
+          }
+        }
+      } catch {
+        // ignore
+      }
       
       console.log('Shop ID for login:', shopId);
       console.log('Branch ID for login:', branchId);
@@ -587,6 +602,7 @@ export default function LoginPage() {
           name: profile.displayName,
           shop_id: shopId,
           branch_id: branchId,
+          user_id: storedUserId,
         });
         
         response = await authApi.lineLogin(
@@ -594,7 +610,9 @@ export default function LoginPage() {
           profile.displayName,
           profile.pictureUrl || '',
           shopId,
-          branchId
+          branchId,
+          storedUserType,
+          storedUserId
         );
         
         console.log('LINE login API response:', JSON.stringify(response, null, 2));
@@ -654,12 +672,18 @@ export default function LoginPage() {
     const finalBranchId = response.branch_id || response.branch?.id || branchId || null;
     const idToken = typeof window !== 'undefined' && window.liff?.getIDToken ? window.liff.getIDToken() : null;
 
+    const customerFromApi = response.customer || response.data?.customer;
+    const lineTokenFromApi =
+      customerFromApi?.line_token ||
+      response.line_token ||
+      profile.userId;
+
     const userData = {
       ...response,
-      id: response.id || response.data?.id,
-      name: response.name || profile.displayName,
-      avatar_url: response.avatar_url || profile.pictureUrl,
-      line_token: response.line_token || profile.userId,
+      id: response.id || customerFromApi?.id || response.data?.id,
+      name: response.name || customerFromApi?.name || profile.displayName,
+      avatar_url: response.avatar_url || customerFromApi?.avatar_url || profile.pictureUrl,
+      line_token: lineTokenFromApi,
       phone: response.phone || null,
       otp_verify: response.otp_verify || false,
       role: isEmployee ? 'employee' : 'customer',
