@@ -6,7 +6,7 @@ export async function GET(request) {
   try {
     const authHeader = request.headers.get('authorization');
     
-    const response = await fetch(`${API_BASE_URL}/auth/me`, {
+    const response = await fetch(`${API_BASE_URL}/me?format=info`, {
       method: 'GET',
       headers: {
         'Content-Type': 'application/json',

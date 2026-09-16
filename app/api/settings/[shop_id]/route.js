@@ -111,10 +111,16 @@ export async function PUT(request, { params }) {
     // Prepare body - keep values as strings (backend expects string format)
     // Convert undefined/null to empty string for consistency
     const cleanedBody = {
-      total_check_tax: body.total_check_tax || '',
-      rate_register_point: body.rate_register_point || '',
-      rate_total_point: body.rate_total_point || '',
-      sms_sendername: body.sms_sendername || '',
+      total_check_tax: body.total_check_tax ?? '',
+      rate_register_point: body.rate_register_point ?? '',
+      rate_total_point: body.rate_total_point ?? '',
+      sms_user: body.sms_user ?? '',
+      sms_password: body.sms_password ?? '',
+      sms_sender_name: body.sms_sender_name ?? body.sms_sendername ?? '',
+      line_channel_id: body.line_channel_id ?? '',
+      line_channel_secret: body.line_channel_secret ?? '',
+      line_channel_access_token: body.line_channel_access_token ?? '',
+      line_oa_name: body.line_oa_name ?? '',
     };
     
     // Validate and stringify JSON
