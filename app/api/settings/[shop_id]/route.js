@@ -121,6 +121,7 @@ export async function PUT(request, { params }) {
       line_channel_secret: body.line_channel_secret ?? '',
       line_channel_access_token: body.line_channel_access_token ?? '',
       line_oa_name: body.line_oa_name ?? '',
+      line_liff_id: body.line_liff_id ?? '',
     };
     
     // Validate and stringify JSON

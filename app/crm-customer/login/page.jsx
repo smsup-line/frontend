@@ -7,6 +7,12 @@ import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { authApi, customerApi } from '@/lib/api';
 import {
+  clearShopLineLoginConfigCache,
+  fetchShopLineLoginConfig,
+  getShopIdForLineLogin,
+  resolveLiffIdForShop,
+} from '@/lib/line-liff-config';
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -27,6 +33,24 @@ export default function LoginPage() {
   const streamRef = useRef(null);
   const html5QrCodeRef = useRef(null);
   const liffInitializedRef = useRef(false); // Track if LIFF is already initialized
+  const liffIdRef = useRef('');
+  const [lineShopLabel, setLineShopLabel] = useState('');
+
+  const shopIdParam = searchParams.get('shop_id') || '';
+
+  const prepareLineLoginForShop = async (shopId) => {
+    if (shopId) {
+      const cfg = await fetchShopLineLoginConfig(shopId);
+      if (cfg) {
+        setLineShopLabel((cfg.line_oa_name || cfg.shop_name || '').trim());
+      }
+    } else {
+      setLineShopLabel('');
+    }
+    const liffId = await resolveLiffIdForShop(shopId);
+    liffIdRef.current = liffId;
+    return liffId;
+  };
 
   useEffect(() => {
     // Only initialize LIFF if we're on the login page
@@ -69,12 +93,28 @@ export default function LoginPage() {
     // Initialize LINE Login
     let checkLIFFInterval = null;
     
+    const startLiffWhenReady = async () => {
+      const shopId =
+        shopIdFromUrl || (typeof localStorage !== 'undefined' ? localStorage.getItem('shop_id') : '') || '';
+      clearShopLineLoginConfigCache(shopId);
+      liffInitializedRef.current = false;
+      const liffId = await prepareLineLoginForShop(shopId);
+      if (!liffId) {
+        if (shopId) {
+          toast.error('ร้านนี้ยังไม่ได้ตั้งค่า LIFF ID — ตั้งค่าในแอดมิน (ตั้งค่าร้าน → LINE OA)');
+        } else {
+          console.warn('LIFF ID not configured (no shop_id and no NEXT_PUBLIC_LIFF_ID)');
+        }
+        return;
+      }
+      if (window.location.pathname === '/crm-customer/login') {
+        initializeLIFF(liffId);
+      }
+    };
+
     // Wait for LIFF SDK to load
     if (window.liff) {
-      // Double check we're still on login page before initializing
-      if (window.location.pathname === '/crm-customer/login') {
-        initializeLIFF();
-      }
+      startLiffWhenReady();
     } else {
       // Wait for LIFF to be available
       checkLIFFInterval = setInterval(() => {
@@ -86,7 +126,7 @@ export default function LoginPage() {
         
         if (window.liff) {
           clearInterval(checkLIFFInterval);
-          initializeLIFF();
+          startLiffWhenReady();
         }
       }, 100);
       
@@ -109,7 +149,8 @@ export default function LoginPage() {
       // Reset initialization flag when component unmounts
       liffInitializedRef.current = false;
     };
-  }, []);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shopIdParam]);
 
   // Check login status after redirect from LINE
   useEffect(() => {
@@ -151,7 +192,9 @@ export default function LoginPage() {
       
       if (typeof window !== 'undefined' && window.liff) {
         try {
-          const liffId = process.env.NEXT_PUBLIC_LIFF_ID;
+          const shopId = getShopIdForLineLogin();
+          const liffId = liffIdRef.current || (await resolveLiffIdForShop(shopId));
+          liffIdRef.current = liffId;
           if (!liffId || liffId.trim() === '') {
             console.log('LIFF ID not configured, skipping check');
             return;
@@ -302,7 +345,8 @@ export default function LoginPage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [searchParams]);
 
-  const initializeLIFF = () => {
+  const initializeLIFF = (liffIdParam) => {
+    const liffId = (liffIdParam || liffIdRef.current || process.env.NEXT_PUBLIC_LIFF_ID || '').trim();
     // Only initialize if we're on the login page
     if (typeof window === 'undefined') {
       console.log('Window is not available, skipping LIFF initialization');
@@ -373,18 +417,22 @@ export default function LoginPage() {
       return;
     }
     
-    const liffId = process.env.NEXT_PUBLIC_LIFF_ID;
-    console.log('LIFF ID from env:', liffId ? 'configured' : 'NOT configured');
+    console.log('LIFF ID:', liffId ? 'configured' : 'NOT configured');
     
     // Check if LIFF ID is configured
-    if (!liffId || liffId.trim() === '') {
-      console.error('LIFF ID is not configured. Please set NEXT_PUBLIC_LIFF_ID in environment variables.');
-      // Only show toast if we're on the login page
+    if (!liffId) {
+      console.error('LIFF ID is not configured for this shop.');
       if (window.location.pathname === '/crm-customer/login') {
-        toast.error('LINE Login ยังไม่พร้อมใช้งาน กรุณาตรวจสอบการตั้งค่า LIFF ID');
+        const shopId = getShopIdForLineLogin();
+        if (shopId) {
+          toast.error('ร้านนี้ยังไม่ได้ตั้งค่า LIFF ID ในแอดมิน');
+        } else {
+          toast.error('LINE Login ยังไม่พร้อมใช้งาน กรุณาเปิดลิงก์ล็อกอินของร้าน (มี shop_id)');
+        }
       }
       return;
     }
+    liffIdRef.current = liffId;
     
     console.log('Initializing LIFF with ID:', liffId);
     
@@ -1018,12 +1066,17 @@ export default function LoginPage() {
   const handleLineLoginClick = async () => {
     console.log('=== LOGIN BUTTON CLICKED ===');
     
-    const liffId = process.env.NEXT_PUBLIC_LIFF_ID;
+    const shopId = getShopIdForLineLogin();
+    const liffId = liffIdRef.current || (await resolveLiffIdForShop(shopId));
+    liffIdRef.current = liffId;
     
-    // Check if LIFF ID is configured
-    if (!liffId || liffId.trim() === '') {
+    if (!liffId) {
       console.error('LIFF ID not configured');
-      toast.error('LINE Login ยังไม่พร้อมใช้งาน กรุณาตรวจสอบการตั้งค่า LIFF ID ใน environment variables');
+      if (shopId) {
+        toast.error('ร้านนี้ยังไม่ได้ตั้งค่า LIFF ID ในแอดมิน');
+      } else {
+        toast.error('กรุณาเปิดลิงก์ล็อกอินของร้าน (มี shop_id) หรือสแกน QR ร้าน');
+      }
       return;
     }
     
@@ -1127,6 +1180,12 @@ export default function LoginPage() {
           <h1 className="text-2xl font-bold">เข้าสู่ระบบ</h1>
           <p className="text-sm text-muted-foreground text-center">
             เข้าสู่ระบบด้วย LINE Login
+            {lineShopLabel ? (
+              <>
+                <br />
+                <span className="font-medium text-foreground">{lineShopLabel}</span>
+              </>
+            ) : null}
           </p>
         </div>
 
