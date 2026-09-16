@@ -5,7 +5,10 @@ const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8080';
 export async function GET(request, { params }) {
   try {
     const authHeader = request.headers.get('authorization');
-    const { id } = params;
+    const { id } = await params;
+    if (!id) {
+      return NextResponse.json({ message: 'invalid id' }, { status: 400 });
+    }
     
     const response = await fetch(`${API_BASE_URL}/admins/${id}`, {
       method: 'GET',
@@ -37,7 +40,10 @@ export async function GET(request, { params }) {
 export async function PUT(request, { params }) {
   try {
     const authHeader = request.headers.get('authorization');
-    const { id } = params;
+    const { id } = await params;
+    if (!id) {
+      return NextResponse.json({ message: 'invalid id' }, { status: 400 });
+    }
     const body = await request.json();
     
     const response = await fetch(`${API_BASE_URL}/admins/${id}`, {
@@ -71,7 +77,10 @@ export async function PUT(request, { params }) {
 export async function DELETE(request, { params }) {
   try {
     const authHeader = request.headers.get('authorization');
-    const { id } = params;
+    const { id } = await params;
+    if (!id) {
+      return NextResponse.json({ message: 'invalid id' }, { status: 400 });
+    }
     
     const response = await fetch(`${API_BASE_URL}/admins/${id}`, {
       method: 'DELETE',
