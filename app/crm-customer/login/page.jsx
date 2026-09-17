@@ -1103,13 +1103,23 @@ export default function LoginPage() {
     console.log('=== LOGIN BUTTON CLICKED ===');
     
     const shopId = getShopIdForLineLogin();
-    const liffId = liffIdRef.current || (await resolveLiffIdString(shopId));
-    liffIdRef.current = liffId;
+    let liffId = liffIdRef.current;
+    if (!liffId) {
+      const res = await resolveLiffIdForShop(shopId);
+      if (res?.invalidConfig) {
+        toast.error(
+          'ตั้งค่า LIFF ID ผิดในแอดมิน: ห้ามใช้ @... (เป็น ID ของ OA) ให้ใส่ LIFF App ID จาก LINE Developers เช่น 2011629819-AbCdEfGh'
+        );
+        return;
+      }
+      liffId = res?.liffId || '';
+      liffIdRef.current = liffId;
+    }
     
     if (!liffId) {
       console.error('LIFF ID not configured');
       if (shopId) {
-        // resolveLiffIdString may have already toasted invalid @ config
+        toast.error('ร้านนี้ยังไม่ได้ตั้งค่า LIFF ID ในแอดมิน');
       } else {
         toast.error('กรุณาเปิดลิงก์ล็อกอินของร้าน (มี shop_id) หรือสแกน QR ร้าน');
       }
