@@ -626,8 +626,15 @@ export default function LoginPage() {
 
       let storedUserId = null;
       let storedUserType = null;
+      let knownPhone = '';
       try {
         const stored = JSON.parse(localStorage.getItem('user') || 'null');
+        if (stored?.otp_verify && stored?.phone) {
+          const p = String(stored.phone).trim();
+          if (p && p !== '-' && !p.startsWith('line:')) {
+            knownPhone = p;
+          }
+        }
         if (stored?.id) {
           const storedShop = stored.shop_id || stored.shop?.id;
           if (!shopId || !storedShop || String(storedShop) === String(shopId)) {
@@ -660,7 +667,8 @@ export default function LoginPage() {
           shopId,
           branchId,
           storedUserType,
-          storedUserId
+          storedUserId,
+          knownPhone
         );
         
         console.log('LINE login API response:', JSON.stringify(response, null, 2));
@@ -778,6 +786,16 @@ export default function LoginPage() {
     if (!pendingProfile || selectingShop) return;
     try {
       setSelectingShop(true);
+      let knownPhone = option.phone || '';
+      try {
+        const stored = JSON.parse(localStorage.getItem('user') || 'null');
+        if (stored?.otp_verify && stored?.phone) {
+          const p = String(stored.phone).trim();
+          if (p && p !== '-' && !p.startsWith('line:')) knownPhone = p;
+        }
+      } catch {
+        // ignore
+      }
       const response = await authApi.lineLogin(
         pendingProfile.userId,
         pendingProfile.displayName,
@@ -785,7 +803,8 @@ export default function LoginPage() {
         option.shop_id,
         option.branch_id,
         option.user_type,
-        option.user_id
+        option.user_id,
+        knownPhone
       );
       if (response?.requires_selection && Array.isArray(response.options) && response.options.length > 0) {
         setMembershipOptions(response.options);

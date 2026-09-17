@@ -12,9 +12,17 @@ function asList(value) {
   return Array.isArray(value) ? value : [];
 }
 
-async function fetchEmployeeMemberships(lineToken, shopId) {
+function membershipPhone(phone) {
+  const p = String(phone || '').trim();
+  if (!p || p === '-' || p.startsWith('line:')) return '';
+  return p;
+}
+
+async function fetchEmployeeMemberships(lineToken, shopId, phone) {
   const params = new URLSearchParams({ line_token: lineToken });
   if (shopId) params.set('shop_id', shopId);
+  const knownPhone = membershipPhone(phone);
+  if (knownPhone) params.set('phone', knownPhone);
   const response = await fetchWithTimeout(
     `${API_BASE_URL}/employeetokenline?${params.toString()}`,
     { method: 'GET', headers: { 'Content-Type': 'application/json' } },
@@ -30,9 +38,11 @@ async function fetchEmployeeMemberships(lineToken, shopId) {
   return [];
 }
 
-async function fetchCustomerMemberships(lineToken, shopId) {
+async function fetchCustomerMemberships(lineToken, shopId, phone) {
   const params = new URLSearchParams({ line_token: lineToken });
   if (shopId) params.set('shop_id', shopId);
+  const knownPhone = membershipPhone(phone);
+  if (knownPhone) params.set('phone', knownPhone);
   const response = await fetchWithTimeout(
     `${API_BASE_URL}/customertokenline?${params.toString()}`,
     { method: 'GET', headers: { 'Content-Type': 'application/json' } },
@@ -88,7 +98,7 @@ function collectOptions(employees, customers) {
   return unique;
 }
 
-async function issueJwt({ line_token, name, avatar_url, shop_id, branch_id, user_type, user_id }) {
+async function issueJwt({ line_token, name, avatar_url, shop_id, branch_id, user_type, user_id, phone }) {
   const jwtResponse = await fetchWithTimeout(
     `${API_BASE_URL}/auth/line-login`,
     {
@@ -102,6 +112,7 @@ async function issueJwt({ line_token, name, avatar_url, shop_id, branch_id, user
         branch_id: branch_id || null,
         user_type,
         user_id,
+        phone: membershipPhone(phone) || undefined,
       }),
     },
     DEFAULT_TIMEOUT
@@ -168,7 +179,7 @@ async function addRegistrationPoints({ line_token, customerId, jwtToken, shopId 
   }
 }
 
-async function createCustomer({ line_token, name, avatar_url, shop_id, branch_id }) {
+async function createCustomer({ line_token, name, avatar_url, shop_id, branch_id, phone }) {
   const createResponse = await fetchWithTimeout(
     `${API_BASE_URL}/line-login`,
     {
@@ -178,7 +189,7 @@ async function createCustomer({ line_token, name, avatar_url, shop_id, branch_id
         line_token,
         name,
         avatar_url,
-        phone: '-',
+        phone: membershipPhone(phone) || undefined,
         shop_id,
         branch_id: branch_id || null,
       }),
@@ -206,7 +217,7 @@ async function createCustomer({ line_token, name, avatar_url, shop_id, branch_id
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { line_token, name, avatar_url, shop_id, branch_id, user_type, user_id } = body;
+    const { line_token, name, avatar_url, shop_id, branch_id, user_type, user_id, phone } = body;
 
     if (!line_token || !name) {
       return NextResponse.json(
@@ -221,8 +232,8 @@ export async function POST(request) {
     // Always load every shop/branch this LINE account belongs to.
     // Filtering by shop_id here would hide other memberships and skip the picker.
     const [employees, customers] = await Promise.all([
-      fetchEmployeeMemberships(line_token),
-      fetchCustomerMemberships(line_token),
+      fetchEmployeeMemberships(line_token, '', phone),
+      fetchCustomerMemberships(line_token, '', phone),
     ]);
 
     const finishMembership = async (membership, userType) => {
@@ -235,6 +246,7 @@ export async function POST(request) {
         branch_id: person?.branch_id || membership.branch?.id || branchId,
         user_type: userType,
         user_id: person?.id,
+        phone,
       });
       return NextResponse.json(
         loginPayload({
@@ -289,6 +301,7 @@ export async function POST(request) {
         avatar_url,
         shop_id: shopId,
         branch_id: branchId,
+        phone,
       });
       if (created.error) {
         return NextResponse.json(
@@ -297,7 +310,7 @@ export async function POST(request) {
         );
       }
 
-      const refreshedCustomers = await fetchCustomerMemberships(line_token);
+      const refreshedCustomers = await fetchCustomerMemberships(line_token, '', phone);
       const refreshedEmployees = employees;
       options = collectOptions(refreshedEmployees, refreshedCustomers);
 
@@ -317,6 +330,7 @@ export async function POST(request) {
           branch_id: finalBranchId,
           user_type: 'customer',
           user_id: created.customer?.id,
+          phone,
         }));
 
       await addRegistrationPoints({
