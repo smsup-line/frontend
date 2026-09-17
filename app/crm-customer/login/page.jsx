@@ -619,8 +619,11 @@ export default function LoginPage() {
         pictureUrl: profile.pictureUrl ? 'provided' : 'missing',
       });
 
-      const shopIdFromUrl = new URLSearchParams(window.location.search).get('shop_id') || '';
-      const branchIdFromUrl = new URLSearchParams(window.location.search).get('branch_id') || null;
+      const urlParams = new URLSearchParams(window.location.search);
+      const shopIdFromUrl = urlParams.get('shop_id') || '';
+      const branchIdFromUrl = urlParams.get('branch_id') || null;
+      const linkEmployeeId =
+        urlParams.get('link_employee_id') || urlParams.get('employee_id') || '';
       const shopId = shopIdFromUrl;
       const branchId = branchIdFromUrl;
 
@@ -666,9 +669,10 @@ export default function LoginPage() {
           profile.pictureUrl || '',
           shopId,
           branchId,
-          storedUserType,
-          storedUserId,
-          knownPhone
+          linkEmployeeId ? 'employee' : storedUserType,
+          linkEmployeeId || storedUserId,
+          knownPhone,
+          linkEmployeeId || undefined
         );
         
         console.log('LINE login API response:', JSON.stringify(response, null, 2));
@@ -734,9 +738,11 @@ export default function LoginPage() {
       response.line_token ||
       profile.userId;
 
+    const employeeFromApi = response.employee || response.data?.employee;
+
     const userData = {
       ...response,
-      id: response.id || customerFromApi?.id || response.data?.id,
+      id: response.id || employeeFromApi?.id || customerFromApi?.id || response.data?.id,
       name: response.name || customerFromApi?.name || profile.displayName,
       avatar_url: response.avatar_url || customerFromApi?.avatar_url || profile.pictureUrl,
       line_token: lineTokenFromApi,
@@ -779,7 +785,7 @@ export default function LoginPage() {
     }
 
     toast.success('เข้าสู่ระบบสำเร็จ');
-    router.push('/crm-customer/profile');
+    router.push(isEmployee ? '/crm-customer/receipt-scanner/employee' : '/crm-customer/profile');
   };
 
   const handleSelectMembership = async (option) => {

@@ -217,7 +217,17 @@ async function createCustomer({ line_token, name, avatar_url, shop_id, branch_id
 export async function POST(request) {
   try {
     const body = await request.json();
-    const { line_token, name, avatar_url, shop_id, branch_id, user_type, user_id, phone } = body;
+    const {
+      line_token,
+      name,
+      avatar_url,
+      shop_id,
+      branch_id,
+      user_type,
+      user_id,
+      phone,
+      link_employee_id,
+    } = body;
 
     if (!line_token || !name) {
       return NextResponse.json(
@@ -229,11 +239,61 @@ export async function POST(request) {
     const shopId = shop_id || '';
     const branchId = branch_id || null;
 
+    // Staff: link LINE via same shop LIFF (per-shop user id) then sign in as employee.
+    if (link_employee_id) {
+      const linkResponse = await fetchWithTimeout(
+        `${API_BASE_URL}/employees/${encodeURIComponent(link_employee_id)}/line-login`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            line_token,
+            name,
+            avatar_url,
+          }),
+        },
+        DEFAULT_TIMEOUT
+      );
+      const linked = await linkResponse.json().catch(() => ({}));
+      if (!linkResponse.ok) {
+        return NextResponse.json(
+          { message: linked.message || linked.error || 'เชื่อมต่อ LINE พนักงานไม่สำเร็จ' },
+          { status: linkResponse.status }
+        );
+      }
+      const empShopId = linked.shop_id || shopId;
+      const empBranchId = linked.branch_id || branchId;
+      const jwtToken = await issueJwt({
+        line_token,
+        name: linked.name || name,
+        avatar_url: linked.avatar_url || avatar_url,
+        shop_id: empShopId,
+        branch_id: empBranchId,
+        user_type: 'employee',
+        user_id: linked.id || link_employee_id,
+        phone: linked.phone || phone,
+      });
+      if (!jwtToken) {
+        return NextResponse.json({ message: 'ไม่สามารถออก token เข้าสู่ระบบได้' }, { status: 500 });
+      }
+      return NextResponse.json(
+        loginPayload({
+          person: { ...linked, line_token },
+          shop: empShopId ? { id: empShopId } : null,
+          branch: empBranchId ? { id: empBranchId } : null,
+          userType: 'employee',
+          jwtToken,
+          extras: { shop_id: empShopId, branch_id: empBranchId },
+        }),
+        { status: 200 }
+      );
+    }
+
     // Always load every shop/branch this LINE account belongs to.
     // Filtering by shop_id here would hide other memberships and skip the picker.
     const [employees, customers] = await Promise.all([
-      fetchEmployeeMemberships(line_token, '', phone),
-      fetchCustomerMemberships(line_token, '', phone),
+      fetchEmployeeMemberships(line_token, shopId, phone),
+      fetchCustomerMemberships(line_token, shopId, phone),
     ]);
 
     const finishMembership = async (membership, userType) => {
