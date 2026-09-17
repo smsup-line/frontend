@@ -38,6 +38,17 @@ export default function LoginPage() {
 
   const shopIdParam = searchParams.get('shop_id') || '';
 
+  const resolveLiffIdString = async (shopId) => {
+    const res = await resolveLiffIdForShop(shopId);
+    if (res?.invalidConfig) {
+      toast.error(
+        'ตั้งค่า LIFF ID ผิดในแอดมิน: ห้ามใช้ @... (เป็น ID ของ OA) ให้ใส่ LIFF App ID จาก LINE Developers เช่น 2011629819-AbCdEfGh'
+      );
+      return '';
+    }
+    return res?.liffId || '';
+  };
+
   const prepareLineLoginForShop = async (shopId) => {
     if (shopId) {
       const cfg = await fetchShopLineLoginConfig(shopId);
@@ -47,7 +58,7 @@ export default function LoginPage() {
     } else {
       setLineShopLabel('');
     }
-    const liffId = await resolveLiffIdForShop(shopId);
+    const liffId = await resolveLiffIdString(shopId);
     liffIdRef.current = liffId;
     return liffId;
   };
@@ -193,7 +204,7 @@ export default function LoginPage() {
       if (typeof window !== 'undefined' && window.liff) {
         try {
           const shopId = getShopIdForLineLogin();
-          const liffId = liffIdRef.current || (await resolveLiffIdForShop(shopId));
+          const liffId = liffIdRef.current || (await resolveLiffIdString(shopId));
           liffIdRef.current = liffId;
           if (!liffId || liffId.trim() === '') {
             console.log('LIFF ID not configured, skipping check');
@@ -1092,13 +1103,13 @@ export default function LoginPage() {
     console.log('=== LOGIN BUTTON CLICKED ===');
     
     const shopId = getShopIdForLineLogin();
-    const liffId = liffIdRef.current || (await resolveLiffIdForShop(shopId));
+    const liffId = liffIdRef.current || (await resolveLiffIdString(shopId));
     liffIdRef.current = liffId;
     
     if (!liffId) {
       console.error('LIFF ID not configured');
       if (shopId) {
-        toast.error('ร้านนี้ยังไม่ได้ตั้งค่า LIFF ID ในแอดมิน');
+        // resolveLiffIdString may have already toasted invalid @ config
       } else {
         toast.error('กรุณาเปิดลิงก์ล็อกอินของร้าน (มี shop_id) หรือสแกน QR ร้าน');
       }
