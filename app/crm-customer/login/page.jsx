@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { LogIn, QrCode, X, Store, GitBranch, UserPlus } from 'lucide-react';
+import { LogIn, QrCode, X, Store, GitBranch } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { authApi, customerApi } from '@/lib/api';
@@ -35,8 +35,6 @@ export default function LoginPage() {
   const liffInitializedRef = useRef(false); // Track if LIFF is already initialized
   const liffIdRef = useRef('');
   const [lineShopLabel, setLineShopLabel] = useState('');
-  const [lineAddFriendUrl, setLineAddFriendUrl] = useState('');
-  const [lineOAFriendFlag, setLineOAFriendFlag] = useState(null);
 
   const shopIdParam = searchParams.get('shop_id') || '';
 
@@ -51,42 +49,14 @@ export default function LoginPage() {
     return res?.liffId || '';
   };
 
-  const refreshLineOAFriendship = async () => {
-    if (typeof window === 'undefined' || !window.liff) return;
-    if (typeof window.liff.isApiAvailable === 'function' && !window.liff.isApiAvailable('friendship')) {
-      return;
-    }
-    if (typeof window.liff.getFriendship !== 'function') return;
-    try {
-      const res = await window.liff.getFriendship();
-      setLineOAFriendFlag(Boolean(res?.friendFlag));
-    } catch (e) {
-      console.warn('getFriendship failed:', e);
-      setLineOAFriendFlag(null);
-    }
-  };
-
-  const openAddFriendOA = () => {
-    if (!lineAddFriendUrl) return;
-    if (typeof window !== 'undefined' && window.liff?.openWindow) {
-      window.liff.openWindow({ url: lineAddFriendUrl, external: true });
-    } else {
-      window.open(lineAddFriendUrl, '_blank', 'noopener,noreferrer');
-    }
-  };
-
   const prepareLineLoginForShop = async (shopId) => {
     if (shopId) {
       const cfg = await fetchShopLineLoginConfig(shopId);
       if (cfg) {
         setLineShopLabel((cfg.line_oa_name || cfg.shop_name || '').trim());
-        setLineAddFriendUrl((cfg.line_oa_add_friend_url || '').trim());
-      } else {
-        setLineAddFriendUrl('');
       }
     } else {
       setLineShopLabel('');
-      setLineAddFriendUrl('');
     }
     const liffId = await resolveLiffIdString(shopId);
     liffIdRef.current = liffId;
@@ -501,7 +471,6 @@ export default function LoginPage() {
       }).then(() => {
         // Mark as successfully initialized only after successful init
         liffInitializedRef.current = true;
-        refreshLineOAFriendship();
       // Double check pathname after init
       if (window.location.pathname !== '/crm-customer/login') {
         console.log('Pathname changed after init, aborting');
@@ -827,7 +796,7 @@ export default function LoginPage() {
     }
 
     toast.success('เข้าสู่ระบบสำเร็จ');
-    router.push(isEmployee ? '/crm-customer/receipt-scanner/employee' : '/crm-customer/profile');
+    router.replace(isEmployee ? '/crm-customer/receipt-scanner/employee' : '/crm-customer/profile');
   };
 
   const handleSelectMembership = async (option) => {
@@ -1276,30 +1245,6 @@ export default function LoginPage() {
             {loading ? 'กำลังเข้าสู่ระบบ...' : 'เข้าสู่ระบบด้วย LINE'}
           </Button>
 
-          {lineAddFriendUrl && lineOAFriendFlag !== true ? (
-            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-950 space-y-2">
-              <p className="text-xs leading-relaxed">
-                เพิ่มเพื่อน LINE OA{lineShopLabel ? ` 「${lineShopLabel}」` : ' ของร้าน'} ก่อนหรือหลังล็อกอิน
-                เพื่อให้รับข้อความและบรอดแคสต์จากร้านได้
-              </p>
-              <Button
-                type="button"
-                variant="outline"
-                className="w-full border-[#06C755] text-[#06C755] hover:bg-[#06C755]/10"
-                onClick={openAddFriendOA}
-              >
-                <UserPlus className="mr-2 h-4 w-4" />
-                เพิ่มเพื่อน{lineShopLabel ? ` ${lineShopLabel}` : ' Official Account'}
-              </Button>
-            </div>
-          ) : null}
-
-          {lineAddFriendUrl && lineOAFriendFlag === true ? (
-            <p className="text-xs text-center text-[#06C755] font-medium">
-              เพิ่มเพื่อน OA แล้ว — สามารถรับข้อความจากร้านได้
-            </p>
-          ) : null}
-          
           <Button 
             type="button" 
             variant="outline"

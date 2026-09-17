@@ -19,6 +19,8 @@ import { Content } from '@/components/layouts/crm/components/content';
 import { toast } from 'sonner';
 import { authApi, customerApi, employeeApi, customerTokenLineApi, pointsApi, customerPhoneApi } from '@/lib/api';
 import { getShopId } from '@/lib/utils';
+import { fetchShopLineLoginConfig } from '@/lib/line-liff-config';
+import { LineOaAddFriendBanner } from '@/components/crm-customer/line-oa-add-friend-banner';
 import Link from 'next/link';
 
 export default function ProfilePage() {
@@ -31,10 +33,34 @@ export default function ProfilePage() {
   const [isEditingPhone, setIsEditingPhone] = useState(false);
   const [phoneValue, setPhoneValue] = useState('');
   const [savingPhone, setSavingPhone] = useState(false);
+  const [lineAddFriendUrl, setLineAddFriendUrl] = useState('');
+  const [lineOaName, setLineOaName] = useState('');
 
   useEffect(() => {
     loadUserData();
   }, []);
+
+  useEffect(() => {
+    const loadOaAddFriend = async () => {
+      const userStr = localStorage.getItem('user');
+      if (!userStr) return;
+      try {
+        const parsed = JSON.parse(userStr);
+        const role = parsed.role || parsed.user_type || 'customer';
+        if (role === 'employee') return;
+        const shopId = parsed.shop_id || getShopId();
+        if (!shopId) return;
+        const cfg = await fetchShopLineLoginConfig(shopId);
+        if (cfg) {
+          setLineAddFriendUrl((cfg.line_oa_add_friend_url || '').trim());
+          setLineOaName((cfg.line_oa_name || cfg.shop_name || '').trim());
+        }
+      } catch {
+        // ignore
+      }
+    };
+    loadOaAddFriend();
+  }, [user]);
 
   const loadUserData = async () => {
     try {
@@ -427,6 +453,10 @@ export default function ProfilePage() {
       <Content className="block py-4 sm:py-6 md:py-8 w-full">
         <div className="w-full mx-auto px-3 sm:px-4 md:px-6 max-w-2xl">
           <div className="space-y-4 sm:space-y-5 md:space-y-6">
+            {!isEmployee && lineAddFriendUrl ? (
+              <LineOaAddFriendBanner addFriendUrl={lineAddFriendUrl} oaName={lineOaName} />
+            ) : null}
+
             {/* Profile Card */}
             <div className="rounded-lg border border-border bg-card p-4 sm:p-5 md:p-6 shadow-sm">
               <div className="flex flex-col items-center space-y-3 sm:space-y-4">
