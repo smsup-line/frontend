@@ -9,7 +9,9 @@ import { authApi, customerApi } from '@/lib/api';
 import {
   clearShopLineLoginConfigCache,
   fetchShopLineLoginConfig,
+  buildShopLoginPageUrl,
   getShopIdForLineLogin,
+  persistShopContextForLineLogin,
   resolveLiffIdForShop,
 } from '@/lib/line-liff-config';
 import {
@@ -39,16 +41,17 @@ export default function LoginPage() {
 
   const shopIdParam = searchParams.get('shop_id') || '';
 
-  const buildShopLoginUrl = () => {
-    if (typeof window === 'undefined') return '';
-    const shopId = getShopIdForLineLogin();
-    if (!shopId) return '';
-    const branchId = (localStorage.getItem('branch_id') || '').trim();
-    const url = new URL('/crm-customer/login', window.location.origin);
-    url.searchParams.set('shop_id', shopId);
-    if (branchId) url.searchParams.set('branch_id', branchId);
-    return url.toString();
+  const branchIdFromUrlOrStorage = () => {
+    const fromUrl = searchParams.get('branch_id') || '';
+    if (fromUrl && String(fromUrl).trim()) return String(fromUrl).trim();
+    if (typeof window === 'undefined') return null;
+    const fromSession = sessionStorage.getItem('branch_id');
+    if (fromSession && String(fromSession).trim()) return String(fromSession).trim();
+    const stored = localStorage.getItem('branch_id');
+    return stored && String(stored).trim() ? String(stored).trim() : null;
   };
+
+  const buildShopLoginUrl = () => buildShopLoginPageUrl();
 
   const refreshLineInAppDetection = () => {
     if (typeof window === 'undefined' || !window.liff?.isInClient) return;
@@ -134,10 +137,7 @@ export default function LoginPage() {
       console.log('=== STORING SHOP/BRANCH FROM URL ===');
       console.log('Shop ID from URL:', shopIdFromUrl);
       console.log('Branch ID from URL:', branchIdFromUrl);
-      localStorage.setItem('shop_id', shopIdFromUrl);
-      if (branchIdFromUrl) {
-        localStorage.setItem('branch_id', branchIdFromUrl);
-      }
+      persistShopContextForLineLogin(shopIdFromUrl, branchIdFromUrl);
     }
     
     if (code) {
@@ -697,10 +697,7 @@ export default function LoginPage() {
         urlParams.get('link_employee_id') || urlParams.get('employee_id') || '';
       // shop_id is often dropped from the URL after LINE/LIFF redirect; keep using stored value from the shop link.
       const shopId = getShopIdForLineLogin();
-      const branchId =
-        urlParams.get('branch_id') ||
-        (typeof localStorage !== 'undefined' ? localStorage.getItem('branch_id') : '') ||
-        null;
+      const branchId = branchIdFromUrlOrStorage();
 
       let storedUserId = null;
       let storedUserType = null;
@@ -1194,10 +1191,13 @@ export default function LoginPage() {
       try {
         console.log('Checking LIFF login status...');
         
-        // Ensure LIFF is initialized
-        if (!window.liff.isInClient() && !window.liff.isLoggedIn()) {
+        persistShopContextForLineLogin(getShopIdForLineLogin(), branchIdFromUrlOrStorage());
+
+        if (!liffInitializedRef.current) {
           console.log('Initializing LIFF before login...');
           await window.liff.init({ liffId });
+          liffInitializedRef.current = true;
+          refreshLineInAppDetection();
         }
 
         const isLoggedIn = window.liff.isLoggedIn();
@@ -1212,9 +1212,14 @@ export default function LoginPage() {
           console.log('=== REDIRECTING TO LINE LOGIN ===');
           console.log('Current URL:', window.location.href);
           setLoading(true);
-          
-          // Use login() without redirectUri to use default callback
-          window.liff.login();
+
+          const redirectUri = buildShopLoginPageUrl();
+          if (redirectUri) {
+            console.log('LIFF login redirectUri:', redirectUri);
+            window.liff.login({ redirectUri });
+          } else {
+            window.liff.login();
+          }
         }
       } catch (error) {
         console.error('=== LIFF LOGIN ERROR ===');
