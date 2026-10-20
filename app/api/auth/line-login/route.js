@@ -430,17 +430,14 @@ export async function POST(request) {
     const findMembership = (list, key, id) =>
       list.find((item) => String(item[key]?.id || '') === String(id || ''));
 
-    // User tapped a shop/branch on the picker
+    // Explicit picker selection. A stale user_id from localStorage (customer wiped)
+    // must not block registration for the shop on the login link.
     if (user_id && user_type) {
       const list = user_type === 'employee' ? employees : customers;
       const selected = findMembership(list, user_type, user_id);
-      if (!selected) {
-        return NextResponse.json(
-          { message: 'ไม่พบข้อมูลร้านที่เลือก', error_code: 'NOT_REGISTERED' },
-          { status: 404 }
-        );
+      if (selected) {
+        return finishMembership(selected, user_type);
       }
-      return finishMembership(selected, user_type);
     }
 
     let options = collectOptions(employees, customers);

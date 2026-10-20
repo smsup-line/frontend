@@ -747,8 +747,6 @@ export default function LoginPage() {
       }
       persistShopContextForLineLogin(shopId, branchId);
 
-      let storedUserId = null;
-      let storedUserType = null;
       let knownPhone = '';
       try {
         const stored = JSON.parse(localStorage.getItem('user') || 'null');
@@ -756,13 +754,6 @@ export default function LoginPage() {
           const p = String(stored.phone).trim();
           if (p && p !== '-' && !p.startsWith('line:')) {
             knownPhone = p;
-          }
-        }
-        if (stored?.id) {
-          const storedShop = stored.shop_id || stored.shop?.id;
-          if (!shopId || !storedShop || String(storedShop) === String(shopId)) {
-            storedUserId = stored.id;
-            storedUserType = stored.user_type || stored.role || null;
           }
         }
       } catch {
@@ -780,7 +771,6 @@ export default function LoginPage() {
           name: profile.displayName,
           shop_id: shopId,
           branch_id: branchId,
-          user_id: storedUserId,
         });
         
         response = await authApi.lineLogin(
@@ -789,8 +779,8 @@ export default function LoginPage() {
           profile.pictureUrl || '',
           shopId,
           branchId,
-          linkEmployeeId ? 'employee' : storedUserType,
-          linkEmployeeId || storedUserId,
+          linkEmployeeId ? 'employee' : undefined,
+          linkEmployeeId || undefined,
           knownPhone,
           linkEmployeeId || undefined
         );
