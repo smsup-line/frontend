@@ -631,12 +631,14 @@ export default function LoginPage() {
       });
 
       const urlParams = new URLSearchParams(window.location.search);
-      const shopIdFromUrl = urlParams.get('shop_id') || '';
-      const branchIdFromUrl = urlParams.get('branch_id') || null;
       const linkEmployeeId =
         urlParams.get('link_employee_id') || urlParams.get('employee_id') || '';
-      const shopId = shopIdFromUrl;
-      const branchId = branchIdFromUrl;
+      // shop_id is often dropped from the URL after LINE/LIFF redirect; keep using stored value from the shop link.
+      const shopId = getShopIdForLineLogin();
+      const branchId =
+        urlParams.get('branch_id') ||
+        (typeof localStorage !== 'undefined' ? localStorage.getItem('branch_id') : '') ||
+        null;
 
       let storedUserId = null;
       let storedUserType = null;
