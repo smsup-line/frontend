@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { LogIn, QrCode, X, Store, GitBranch } from 'lucide-react';
+import { LogIn, QrCode, X, Store, GitBranch, ExternalLink } from 'lucide-react';
 import { toast } from 'sonner';
 import { Button } from '@/components/ui/button';
 import { authApi, customerApi } from '@/lib/api';
@@ -35,8 +35,54 @@ export default function LoginPage() {
   const liffInitializedRef = useRef(false); // Track if LIFF is already initialized
   const liffIdRef = useRef('');
   const [lineShopLabel, setLineShopLabel] = useState('');
+  const [inLineInAppBrowser, setInLineInAppBrowser] = useState(false);
 
   const shopIdParam = searchParams.get('shop_id') || '';
+
+  const buildShopLoginUrl = () => {
+    if (typeof window === 'undefined') return '';
+    const shopId = getShopIdForLineLogin();
+    if (!shopId) return '';
+    const branchId = (localStorage.getItem('branch_id') || '').trim();
+    const url = new URL('/crm-customer/login', window.location.origin);
+    url.searchParams.set('shop_id', shopId);
+    if (branchId) url.searchParams.set('branch_id', branchId);
+    return url.toString();
+  };
+
+  const refreshLineInAppDetection = () => {
+    if (typeof window === 'undefined' || !window.liff?.isInClient) return;
+    try {
+      setInLineInAppBrowser(window.liff.isInClient());
+    } catch {
+      setInLineInAppBrowser(false);
+    }
+  };
+
+  const handleOpenInExternalBrowser = async () => {
+    const targetUrl = buildShopLoginUrl();
+    if (!targetUrl) {
+      toast.error('ไม่พบ shop_id — เปิดจากลิงก์ร้านหรือสแกน QR อีกครั้ง');
+      return;
+    }
+    try {
+      if (window.liff?.isLoggedIn?.() && window.liff?.logout) {
+        window.liff.logout();
+      }
+    } catch {
+      // ignore stale LIFF session
+    }
+    try {
+      if (window.liff?.openWindow) {
+        window.liff.openWindow({ url: targetUrl, external: true });
+        toast.message('เปิดใน Chrome / Safari แล้ว — กดเข้าสู่ระบบด้วย LINE ที่หน้านั้น');
+        return;
+      }
+    } catch (error) {
+      console.error('liff.openWindow external failed:', error);
+    }
+    window.open(targetUrl, '_blank', 'noopener,noreferrer');
+  };
 
   const resolveLiffIdString = async (shopId) => {
     const res = await resolveLiffIdForShop(shopId);
@@ -161,6 +207,21 @@ export default function LoginPage() {
       liffInitializedRef.current = false;
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [shopIdParam]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if (window.liff) {
+      refreshLineInAppDetection();
+      return;
+    }
+    const timer = setInterval(() => {
+      if (window.liff) {
+        refreshLineInAppDetection();
+        clearInterval(timer);
+      }
+    }, 200);
+    return () => clearInterval(timer);
   }, [shopIdParam]);
 
   // Check login status after redirect from LINE
@@ -471,6 +532,7 @@ export default function LoginPage() {
       }).then(() => {
         // Mark as successfully initialized only after successful init
         liffInitializedRef.current = true;
+        refreshLineInAppDetection();
       // Double check pathname after init
       if (window.location.pathname !== '/crm-customer/login') {
         console.log('Pathname changed after init, aborting');
@@ -1238,6 +1300,26 @@ export default function LoginPage() {
         </div>
 
         <div className="space-y-4">
+          {inLineInAppBrowser ? (
+            <div className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-xs text-amber-950 space-y-2">
+              <p>
+                เปิดอยู่ในเบราว์เซอร์ของแอป LINE — ถ้าล็อกอินค้างหรือผิดร้าน ให้เปิดใน Chrome / Safari
+                (ล้าง session แคชของ LIFF)
+              </p>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="w-full border-amber-300 bg-white hover:bg-amber-100"
+                onClick={handleOpenInExternalBrowser}
+                disabled={loading}
+              >
+                <ExternalLink className="mr-2 h-4 w-4" />
+                เปิดในเบราว์เซอร์ภายนอก
+              </Button>
+            </div>
+          ) : null}
+
           <Button 
             type="button" 
             className="w-full bg-[#06C755] hover:bg-[#05B048] text-white" 
