@@ -40,6 +40,11 @@ export default function LoginPage() {
   const [inLineInAppBrowser, setInLineInAppBrowser] = useState(false);
 
   const shopIdParam = searchParams.get('shop_id') || '';
+  const branchIdParam = searchParams.get('branch_id') || '';
+
+  if (typeof window !== 'undefined' && shopIdParam) {
+    persistShopContextForLineLogin(shopIdParam, branchIdParam || null);
+  }
 
   const branchIdFromUrlOrStorage = () => {
     const fromUrl = searchParams.get('branch_id') || '';
@@ -699,6 +704,15 @@ export default function LoginPage() {
       const shopId = getShopIdForLineLogin();
       const branchId = branchIdFromUrlOrStorage();
 
+      if (!shopId) {
+        toast.error(
+          'ไม่พบรหัสร้าน — เปิดลิงก์สมัครจาก QR ร้าน (มี shop_id) หรือกดเปิดในเบราว์เซอร์ภายนอกแล้วลองใหม่'
+        );
+        setLoading(false);
+        return;
+      }
+      persistShopContextForLineLogin(shopId, branchId);
+
       let storedUserId = null;
       let storedUserType = null;
       let knownPhone = '';
@@ -764,8 +778,16 @@ export default function LoginPage() {
         }
         
         // 404 Not Found - Not registered
+        if (apiError.data?.error_code === 'MISSING_SHOP_ID') {
+          toast.error(apiError.message || 'ไม่พบรหัสร้าน — เปิดลิงก์จาก QR ร้านอีกครั้ง');
+          setLoading(false);
+          return;
+        }
         if (status === 404 || (apiError.data && apiError.data.error_code === 'NOT_REGISTERED')) {
-          toast.error('ยังไม่ลงทะเบียน กรุณาลงทะเบียนที่หน้าร้าน');
+          toast.error(
+            apiError.message ||
+              'ยังไม่ลงทะเบียนในร้านนี้ — เปิดลิงก์สมัครจาก QR อีกครั้งหรือติดต่อร้าน'
+          );
           setLoading(false);
           return;
         }

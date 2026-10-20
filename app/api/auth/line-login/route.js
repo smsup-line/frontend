@@ -1,5 +1,48 @@
+import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
 import { fetchWithTimeout } from '@/lib/fetch-with-timeout';
+
+function shopIdFromReferer(request) {
+  const ref = request.headers.get('referer') || '';
+  try {
+    const sid = new URL(ref).searchParams.get('shop_id');
+    return sid && String(sid).trim() ? String(sid).trim() : '';
+  } catch {
+    return '';
+  }
+}
+
+async function resolveShopIdForLineLogin(request, bodyShopId) {
+  const fromBody = bodyShopId && String(bodyShopId).trim() ? String(bodyShopId).trim() : '';
+  if (fromBody) return fromBody;
+  const headerShop = (request.headers.get('x-membroo-shop-id') || '').trim();
+  if (headerShop) return headerShop;
+  try {
+    const jar = await cookies();
+    const fromCookie = jar.get('membroo_shop_id')?.value;
+    if (fromCookie && String(fromCookie).trim()) return String(fromCookie).trim();
+  } catch {
+    // ignore
+  }
+  const fromReferer = shopIdFromReferer(request);
+  if (fromReferer) return fromReferer;
+  const envDefault = (process.env.NEXT_PUBLIC_DEFAULT_SHOP_ID || '').trim();
+  return envDefault;
+}
+
+async function resolveBranchIdForLineLogin(request, bodyBranchId) {
+  if (bodyBranchId && String(bodyBranchId).trim()) return String(bodyBranchId).trim();
+  const headerBranch = (request.headers.get('x-membroo-branch-id') || '').trim();
+  if (headerBranch) return headerBranch;
+  try {
+    const jar = await cookies();
+    const fromCookie = jar.get('membroo_branch_id')?.value;
+    if (fromCookie && String(fromCookie).trim()) return String(fromCookie).trim();
+  } catch {
+    // ignore
+  }
+  return null;
+}
 
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || 'http://localhost:8080';
 const DEFAULT_TIMEOUT = 10000;
@@ -236,8 +279,19 @@ export async function POST(request) {
       );
     }
 
-    const shopId = shop_id || '';
-    const branchId = branch_id || null;
+    const shopId = await resolveShopIdForLineLogin(request, shop_id);
+    const branchId = await resolveBranchIdForLineLogin(request, branch_id);
+
+    if (!shopId) {
+      return NextResponse.json(
+        {
+          message:
+            'ไม่พบรหัสร้าน (shop_id) — กรุณาเปิดลิงก์สมัครจาก QR ร้านหรือลิงก์ที่ลงท้ายด้วย ?shop_id=...',
+          error_code: 'MISSING_SHOP_ID',
+        },
+        { status: 400 }
+      );
+    }
 
     // Staff: link LINE via same shop LIFF (per-shop user id) then sign in as employee.
     if (link_employee_id) {
@@ -432,9 +486,11 @@ export async function POST(request) {
 
     return NextResponse.json(
       {
-        message: 'ยังไม่ลงทะเบียน กรุณาลงทะเบียนที่หน้าร้าน',
+        message:
+          'ไม่พบสมาชิกในร้านนี้ — ลองเปิดลิงก์สมัครจาก QR อีกครั้ง หรือติดต่อร้านให้ลงทะเบียน',
         error_code: 'NOT_REGISTERED',
         line_token,
+        shop_id: shopId,
       },
       { status: 404 }
     );
