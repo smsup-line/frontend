@@ -75,6 +75,18 @@ async function resolveBranchIdForLineLogin(request, bodyBranchId) {
 const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || process.env.API_URL || 'http://localhost:8080';
 const DEFAULT_TIMEOUT = 10000;
 
+function humanizeShopApiError(message) {
+  const m = String(message || '').trim().toLowerCase();
+  if (!m) return message;
+  if (m === 'not_found' || m.includes('shop not found')) {
+    return 'ไม่พบร้านค้าในระบบ — เปิดลิงก์สมัครจาก QR ร้าน (มี shop_id) อีกครั้ง';
+  }
+  if (m.includes('invalid shop_id') || m.includes('ambiguous shop_id')) {
+    return 'รหัสร้านไม่ถูกต้อง — สแกน QR หรือเปิดลิงก์สมัครของร้านใหม่';
+  }
+  return message;
+}
+
 function extractJwt(data) {
   return data?.token || data?.access_token || data?.jwt || data?.accessToken || null;
 }
@@ -269,10 +281,11 @@ async function createCustomer({ line_token, name, avatar_url, shop_id, branch_id
   );
   if (!createResponse.ok) {
     const errData = await createResponse.json().catch(() => ({}));
+    const rawMessage = errData.message || errData.error || 'ไม่สามารถเพิ่มข้อมูลลูกค้าได้';
     return {
       error: true,
       status: createResponse.status,
-      message: errData.message || errData.error || 'ไม่สามารถเพิ่มข้อมูลลูกค้าได้',
+      message: humanizeShopApiError(rawMessage),
     };
   }
   const created = await createResponse.json().catch(() => ({}));

@@ -100,6 +100,26 @@ function authLimitPath(pathname) {
   );
 }
 
+const SHOP_CONTEXT_COOKIE_MAX_AGE = 60 * 60 * 24 * 7;
+
+function attachShopContextCookies(request, response) {
+  if (request.nextUrl.pathname !== '/crm-customer/login') {
+    return response;
+  }
+  const shopId = request.nextUrl.searchParams.get('shop_id');
+  const branchId = request.nextUrl.searchParams.get('branch_id');
+  const secure = request.nextUrl.protocol === 'https:';
+  const cookieBase = { path: '/', sameSite: 'lax', maxAge: SHOP_CONTEXT_COOKIE_MAX_AGE, secure };
+
+  if (shopId && String(shopId).trim()) {
+    response.cookies.set('membroo_shop_id', String(shopId).trim(), cookieBase);
+  }
+  if (branchId && String(branchId).trim()) {
+    response.cookies.set('membroo_branch_id', String(branchId).trim(), cookieBase);
+  }
+  return response;
+}
+
 export async function middleware(request) {
   const { pathname, search } = request.nextUrl;
   const clientIp = getClientIp(request);
@@ -157,7 +177,8 @@ export async function middleware(request) {
     }
   }
 
-  return applySecurityHeaders(NextResponse.next());
+  const response = applySecurityHeaders(NextResponse.next());
+  return attachShopContextCookies(request, response);
 }
 
 export const config = {

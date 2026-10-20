@@ -12,8 +12,10 @@ import {
   buildShopLoginPageUrl,
   getShopIdForLineLogin,
   persistShopContextForLineLogin,
+  readShopIdFromDocumentCookie,
   resolveLiffIdForShop,
   resolveShopIdCanonical,
+  isFullShopUUID,
 } from '@/lib/line-liff-config';
 import {
   Dialog,
@@ -72,6 +74,15 @@ export default function LoginPage() {
   };
 
   const buildShopLoginUrl = () => buildShopLoginPageUrl();
+
+  const resolveShopIdForLogin = async (raw) => {
+    const trimmed = String(raw || '').trim();
+    if (!trimmed) return '';
+    const canonical = await resolveShopIdCanonical(trimmed);
+    if (canonical) return canonical;
+    if (isFullShopUUID(trimmed)) return trimmed.toLowerCase();
+    return '';
+  };
 
   const refreshLineInAppDetection = () => {
     if (typeof window === 'undefined' || !window.liff?.isInClient) return;
@@ -171,8 +182,15 @@ export default function LoginPage() {
     let checkLIFFInterval = null;
     
     const startLiffWhenReady = async () => {
-      const shopId =
-        shopIdFromUrl || (typeof localStorage !== 'undefined' ? localStorage.getItem('shop_id') : '') || '';
+      const rawShopId =
+        shopIdFromUrl ||
+        readShopIdFromDocumentCookie() ||
+        (typeof localStorage !== 'undefined' ? localStorage.getItem('shop_id') : '') ||
+        '';
+      const shopId = await resolveShopIdForLogin(rawShopId);
+      if (shopId) {
+        persistShopContextForLineLogin(shopId, branchIdFromUrl || null);
+      }
       clearShopLineLoginConfigCache(shopId);
       liffInitializedRef.current = false;
       const liffId = await prepareLineLoginForShop(shopId);
@@ -717,7 +735,7 @@ export default function LoginPage() {
         urlParams.get('link_employee_id') || urlParams.get('employee_id') || '';
       // shop_id is often dropped from the URL after LINE/LIFF redirect; keep using stored value from the shop link.
       const rawShopId = getShopIdForLineLogin();
-      const shopId = (await resolveShopIdCanonical(rawShopId)) || rawShopId;
+      const shopId = await resolveShopIdForLogin(rawShopId);
       const branchId = branchIdFromUrlOrStorage();
 
       if (!shopId) {
@@ -804,6 +822,22 @@ export default function LoginPage() {
             apiError.message ||
               'ยังไม่ลงทะเบียนในร้านนี้ — เปิดลิงก์สมัครจาก QR อีกครั้งหรือติดต่อร้าน'
           );
+          setLoading(false);
+          return;
+        }
+
+        if (apiError.data?.error_code === 'CREATE_CUSTOMER_FAILED') {
+          toast.error(
+            apiError.message ||
+              'ไม่สามารถลงทะเบียนในร้านนี้ได้ — เปิดลิงก์จาก QR ร้านอีกครั้งหรือติดต่อแอดมิน'
+          );
+          setLoading(false);
+          return;
+        }
+
+        const shopErr = String(errorMessage).toLowerCase();
+        if (shopErr.includes('shop not found') || shopErr.includes('invalid shop_id')) {
+          toast.error('ไม่พบร้านค้าในระบบ — เปิดลิงก์สมัครจาก QR ร้าน (มี shop_id) อีกครั้ง');
           setLoading(false);
           return;
         }
@@ -1201,7 +1235,11 @@ export default function LoginPage() {
   const handleLineLoginClick = async () => {
     console.log('=== LOGIN BUTTON CLICKED ===');
     
-    const shopId = getShopIdForLineLogin();
+    const rawShopId = getShopIdForLineLogin();
+    const shopId = await resolveShopIdForLogin(rawShopId);
+    if (shopId) {
+      persistShopContextForLineLogin(shopId, branchIdFromUrlOrStorage());
+    }
     let liffId = liffIdRef.current;
     if (!liffId) {
       const res = await resolveLiffIdForShop(shopId);
@@ -1229,8 +1267,6 @@ export default function LoginPage() {
       try {
         console.log('Checking LIFF login status...');
         
-        persistShopContextForLineLogin(getShopIdForLineLogin(), branchIdFromUrlOrStorage());
-
         if (!liffInitializedRef.current) {
           console.log('Initializing LIFF before login...');
           await window.liff.init({ liffId });
