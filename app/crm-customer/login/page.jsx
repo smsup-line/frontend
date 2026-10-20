@@ -13,6 +13,7 @@ import {
   getShopIdForLineLogin,
   persistShopContextForLineLogin,
   resolveLiffIdForShop,
+  resolveShopIdCanonical,
 } from '@/lib/line-liff-config';
 import {
   Dialog,
@@ -42,9 +43,23 @@ export default function LoginPage() {
   const shopIdParam = searchParams.get('shop_id') || '';
   const branchIdParam = searchParams.get('branch_id') || '';
 
-  if (typeof window !== 'undefined' && shopIdParam) {
-    persistShopContextForLineLogin(shopIdParam, branchIdParam || null);
-  }
+  useEffect(() => {
+    if (!shopIdParam || typeof window === 'undefined') return;
+    let cancelled = false;
+    (async () => {
+      const canonical = await resolveShopIdCanonical(shopIdParam);
+      if (cancelled || !canonical) return;
+      persistShopContextForLineLogin(canonical, branchIdParam || null);
+      if (canonical !== shopIdParam.trim()) {
+        const url = new URL(window.location.href);
+        url.searchParams.set('shop_id', canonical);
+        window.history.replaceState({}, '', url.toString());
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [shopIdParam, branchIdParam]);
 
   const branchIdFromUrlOrStorage = () => {
     const fromUrl = searchParams.get('branch_id') || '';
@@ -701,7 +716,8 @@ export default function LoginPage() {
       const linkEmployeeId =
         urlParams.get('link_employee_id') || urlParams.get('employee_id') || '';
       // shop_id is often dropped from the URL after LINE/LIFF redirect; keep using stored value from the shop link.
-      const shopId = getShopIdForLineLogin();
+      const rawShopId = getShopIdForLineLogin();
+      const shopId = (await resolveShopIdCanonical(rawShopId)) || rawShopId;
       const branchId = branchIdFromUrlOrStorage();
 
       if (!shopId) {

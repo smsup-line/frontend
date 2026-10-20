@@ -12,22 +12,50 @@ function shopIdFromReferer(request) {
   }
 }
 
+async function canonicalShopIdFromApi(raw) {
+  const s = String(raw || '').trim();
+  if (!s) return '';
+  const uuidRe = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+  if (uuidRe.test(s)) return s.toLowerCase();
+  const response = await fetchWithTimeout(
+    `${API_BASE_URL}/shops/resolve?shop_id=${encodeURIComponent(s)}`,
+    { method: 'GET', headers: { 'Content-Type': 'application/json' } },
+    DEFAULT_TIMEOUT
+  );
+  if (!response.ok) return '';
+  const data = await response.json().catch(() => ({}));
+  return String(data.shop_id || '').trim();
+}
+
 async function resolveShopIdForLineLogin(request, bodyShopId) {
-  const fromBody = bodyShopId && String(bodyShopId).trim() ? String(bodyShopId).trim() : '';
-  if (fromBody) return fromBody;
+  let fromBody = bodyShopId && String(bodyShopId).trim() ? String(bodyShopId).trim() : '';
+  if (fromBody) {
+    const canonical = await canonicalShopIdFromApi(fromBody);
+    if (canonical) return canonical;
+  }
   const headerShop = (request.headers.get('x-membroo-shop-id') || '').trim();
-  if (headerShop) return headerShop;
+  if (headerShop) {
+    const canonical = await canonicalShopIdFromApi(headerShop);
+    if (canonical) return canonical;
+  }
   try {
     const jar = await cookies();
     const fromCookie = jar.get('membroo_shop_id')?.value;
-    if (fromCookie && String(fromCookie).trim()) return String(fromCookie).trim();
+    if (fromCookie && String(fromCookie).trim()) {
+      const canonical = await canonicalShopIdFromApi(String(fromCookie).trim());
+      if (canonical) return canonical;
+    }
   } catch {
     // ignore
   }
   const fromReferer = shopIdFromReferer(request);
-  if (fromReferer) return fromReferer;
+  if (fromReferer) {
+    const canonical = await canonicalShopIdFromApi(fromReferer);
+    if (canonical) return canonical;
+  }
   const envDefault = (process.env.NEXT_PUBLIC_DEFAULT_SHOP_ID || '').trim();
-  return envDefault;
+  if (envDefault) return (await canonicalShopIdFromApi(envDefault)) || envDefault;
+  return '';
 }
 
 async function resolveBranchIdForLineLogin(request, bodyBranchId) {
