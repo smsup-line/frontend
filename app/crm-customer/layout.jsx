@@ -85,7 +85,8 @@ export default function CrmCustomerLayout({ children }) {
       pathname === '/crm-customer/my-promotions' ||
       pathname === '/crm-customer/approve-promotions' ||
       pathname === '/crm-customer/promotions' ||
-      pathname === '/crm-customer/give-points') {
+      pathname === '/crm-customer/give-points' ||
+      pathname === '/crm-customer/claim-points') {
     return <AuthGuard>{children}</AuthGuard>;
   }
 

@@ -138,13 +138,21 @@ function ClaimPoints() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <div className="w-full max-w-md rounded-lg border bg-card p-6 space-y-4 text-center">
-        <h1 className="text-xl font-bold">รับคะแนนสะสม</h1>
+    <div className="min-h-screen bg-background">
+      <header className="sticky top-0 z-20 border-b bg-background">
+        <div className="mx-auto flex h-14 max-w-md items-center px-4">
+          <button type="button" className="text-sm text-primary" onClick={() => router.push('/crm-customer/profile')}>
+            กลับ
+          </button>
+          <h1 className="flex-1 text-center text-base font-semibold">รับคะแนนสะสม</h1>
+          <span className="w-8" />
+        </div>
+      </header>
+      <div className="mx-auto w-full max-w-md space-y-4 px-4 py-6 text-center">
         {scanning ? (
           <>
-            <p className="text-sm text-muted-foreground">เปิดกล้องแล้ว ส่องไปที่ QR ที่พนักงานสร้าง</p>
-            <div id="points-qr-reader" className="overflow-hidden rounded-md" />
+            <p className="text-sm text-muted-foreground">ส่องกล้องไปที่ QR ที่พนักงานสร้าง</p>
+            <div id="points-qr-reader" className="points-qr-reader overflow-hidden rounded-xl bg-black" />
           </>
         ) : !info ? (
           <p className="text-muted-foreground">กำลังโหลด...</p>
@@ -166,6 +174,18 @@ function ClaimPoints() {
           </>
         )}
       </div>
+      <style>{`
+        .points-qr-reader video {
+          width: 100% !important;
+          height: auto !important;
+          border-radius: 12px;
+          object-fit: cover;
+        }
+        .points-qr-reader img { display: none !important; }
+        #points-qr-reader__dashboard_section,
+        #points-qr-reader__dashboard,
+        #points-qr-reader__header_message { display: none !important; }
+      `}</style>
     </div>
   );
 }
