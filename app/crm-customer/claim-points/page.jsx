@@ -138,17 +138,9 @@ function ClaimPoints() {
   };
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="sticky top-0 z-20 border-b bg-background">
-        <div className="mx-auto flex h-14 max-w-md items-center px-4">
-          <button type="button" className="text-sm text-primary" onClick={() => router.push('/crm-customer/profile')}>
-            กลับ
-          </button>
-          <h1 className="flex-1 text-center text-base font-semibold">รับคะแนนสะสม</h1>
-          <span className="w-8" />
-        </div>
-      </header>
-      <div className="mx-auto w-full max-w-md space-y-4 px-4 py-6 text-center">
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="w-full max-w-md space-y-4 rounded-lg border bg-card p-6 text-center shadow-sm">
+        <h1 className="text-xl font-semibold">รับคะแนนสะสม</h1>
         {scanning ? (
           <>
             <p className="text-sm text-muted-foreground">ส่องกล้องไปที่ QR ที่พนักงานสร้าง</p>

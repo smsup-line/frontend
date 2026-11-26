@@ -54,8 +54,9 @@ export default function VerifyPhonePage() {
   useEffect(() => {
     // Get phone from query parameter
     const phoneParam = searchParams.get('phone');
-    if (phoneParam) {
-      phoneForm.setValue('phone', phoneParam);
+    const phoneDigits = String(phoneParam || '').replace(/\D/g, '');
+    if (/^0\d{9}$/.test(phoneDigits)) {
+      phoneForm.setValue('phone', phoneDigits);
     }
 
     // Get customer ID from localStorage
@@ -67,8 +68,10 @@ export default function VerifyPhonePage() {
           setCustomerId(user.id);
         }
         // If phone is in user data and not in query, use it
-        if (!phoneParam && user.phone) {
-          phoneForm.setValue('phone', user.phone);
+        const savedPhone = String(user.phone || '');
+        const digits = savedPhone.replace(/\D/g, '');
+        if (!phoneParam && /^0\d{9}$/.test(digits)) {
+          phoneForm.setValue('phone', digits);
         }
       } catch (e) {
         console.error('Failed to parse user info:', e);
