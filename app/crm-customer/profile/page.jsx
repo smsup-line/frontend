@@ -374,6 +374,16 @@ export default function ProfilePage() {
                   ) : (
                     // Customer menu
                     <>
+                      <Link href="/crm-customer/claim-points">
+                        <Button
+                          variant="ghost"
+                          className="w-full justify-start text-sm sm:text-base"
+                          onClick={() => setIsMenuOpen(false)}
+                        >
+                          <Coins className="mr-2 h-4 w-4" />
+                          รับคะแนนจาก QR
+                        </Button>
+                      </Link>
                       <Link href="/crm-customer/points-history">
                         <Button
                           variant="ghost"

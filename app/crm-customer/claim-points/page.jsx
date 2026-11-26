@@ -43,7 +43,15 @@ function ClaimPoints() {
   };
 
   if (!code) {
-    return <p className="p-6 text-center">QR ไม่ถูกต้อง</p>;
+    return (
+      <div className="min-h-screen flex items-center justify-center p-6">
+        <div className="max-w-md space-y-3 text-center">
+          <h1 className="text-xl font-bold">รับคะแนนจาก QR</h1>
+          <p>ให้พนักงานเปิดหน้าให้คะแนนสะสม แล้วกดสร้าง QR จากนั้นสแกน QR นั้นด้วย LINE</p>
+          <p className="text-sm text-muted-foreground">หน้านี้อยู่ที่ /crm-customer/claim-points และเปิดอัตโนมัติเมื่อสแกน QR</p>
+        </div>
+      </div>
+    );
   }
 
   return (
