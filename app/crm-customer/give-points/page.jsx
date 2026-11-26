@@ -35,6 +35,7 @@ export default function GivePointsPage() {
   const [foundCustomer, setFoundCustomer] = useState(null);
   const [searching, setSearching] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [qrUrl, setQrUrl] = useState('');
 
   useEffect(() => {
     loadUserData();
@@ -146,6 +147,30 @@ export default function GivePointsPage() {
     } catch (error) {
       console.error('Failed to add points:', error);
       toast.error(error.message || 'ไม่สามารถเพิ่มคะแนนสะสมได้');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleCreateQR = async () => {
+    const pointsValue = parseInt(points, 10);
+    if (!pointsValue || pointsValue <= 0) {
+      toast.error('กรุณากรอกคะแนนสะสม');
+      return;
+    }
+    const trimmedDetail = detail.trim();
+    if (!trimmedDetail) {
+      toast.error('กรุณากรอกรายละเอียด');
+      return;
+    }
+    try {
+      setSaving(true);
+      const created = await pointsApi.createQR({ points: pointsValue, detail: trimmedDetail });
+      const url = `${window.location.origin}/crm-customer/claim-points?code=${created.token}`;
+      setQrUrl(url);
+      toast.success('สร้าง QR แล้ว ให้ลูกค้าสแกนภายใน 30 นาที');
+    } catch (error) {
+      toast.error(error.message || 'สร้าง QR ไม่สำเร็จ');
     } finally {
       setSaving(false);
     }
@@ -344,6 +369,21 @@ export default function GivePointsPage() {
                 onChange={(e) => setDetail(e.target.value)}
               />
             </div>
+
+            <Button type="button" variant="outline" className="w-full" disabled={saving} onClick={handleCreateQR}>
+              สร้าง QR ให้ลูกค้าสแกน
+            </Button>
+
+            {qrUrl && (
+              <div className="space-y-2 text-center">
+                <img
+                  alt="QR รับคะแนน"
+                  className="mx-auto h-56 w-56 rounded-md bg-white"
+                  src={`https://api.qrserver.com/v1/create-qr-code/?size=240x240&data=${encodeURIComponent(qrUrl)}`}
+                />
+                <p className="text-xs text-muted-foreground">ลูกค้าสแกนแล้วกดรับคะแนน ใช้ได้ครั้งเดียวภายใน 30 นาที</p>
+              </div>
+            )}
 
             <Button type="submit" className="w-full" disabled={saving || !foundCustomer}>
               {saving ? (

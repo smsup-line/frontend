@@ -919,6 +919,12 @@ export default function LoginPage() {
     }
 
     toast.success('เข้าสู่ระบบสำเร็จ');
+    const next = sessionStorage.getItem('post_login_next');
+    if (next && next.startsWith('/crm-customer/claim-points')) {
+      sessionStorage.removeItem('post_login_next');
+      router.replace(next);
+      return;
+    }
     router.replace(isEmployee ? '/crm-customer/receipt-scanner/employee' : '/crm-customer/profile');
   };
 

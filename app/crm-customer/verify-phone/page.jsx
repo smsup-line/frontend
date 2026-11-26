@@ -139,6 +139,12 @@ export default function VerifyPhonePage() {
         }
 
         toast.success('ยืนยัน OTP สำเร็จ');
+        const next = sessionStorage.getItem('post_login_next');
+        if (next && next.startsWith('/crm-customer/claim-points')) {
+          sessionStorage.removeItem('post_login_next');
+          router.push(next);
+          return;
+        }
         router.push('/crm-customer/profile');
       } else {
         toast.error('รหัส OTP ไม่ถูกต้อง');
