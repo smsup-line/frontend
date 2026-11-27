@@ -11,6 +11,9 @@ import {
   fetchShopLineLoginConfig,
   buildShopLoginPageUrl,
   getShopIdForLineLogin,
+  getLinkEmployeeId,
+  persistLinkEmployeeId,
+  clearLinkEmployeeId,
   persistShopContextForLineLogin,
   readShopIdFromDocumentCookie,
   resolveLiffIdForShop,
@@ -162,6 +165,10 @@ export default function LoginPage() {
     const state = urlParams.get('state');
     const shopIdFromUrl = urlParams.get('shop_id');
     const branchIdFromUrl = urlParams.get('branch_id');
+    const linkEmployeeFromUrl = urlParams.get('link_employee_id') || urlParams.get('employee_id');
+    if (linkEmployeeFromUrl) {
+      persistLinkEmployeeId(linkEmployeeFromUrl);
+    }
     
     // Store shop_id and branch_id from URL to localStorage BEFORE login
     if (shopIdFromUrl) {
@@ -731,8 +738,7 @@ export default function LoginPage() {
       });
 
       const urlParams = new URLSearchParams(window.location.search);
-      const linkEmployeeId =
-        urlParams.get('link_employee_id') || urlParams.get('employee_id') || '';
+      const linkEmployeeId = getLinkEmployeeId();
       // shop_id is often dropped from the URL after LINE/LIFF redirect; keep using stored value from the shop link.
       const rawShopId = getShopIdForLineLogin();
       const shopId = await resolveShopIdForLogin(rawShopId);
@@ -918,6 +924,7 @@ export default function LoginPage() {
       return;
     }
 
+    clearLinkEmployeeId();
     toast.success('เข้าสู่ระบบสำเร็จ');
     const next = sessionStorage.getItem('post_login_next');
     if (next && next.startsWith('/crm-customer/claim-points')) {
@@ -1130,6 +1137,7 @@ export default function LoginPage() {
       const url = new URL(qrData);
       const shopId = url.searchParams.get('shop_id');
       const branchId = url.searchParams.get('branch_id');
+      const linkEmployeeId = url.searchParams.get('link_employee_id') || url.searchParams.get('employee_id');
       
       if (shopId) {
         // Store shop_id and branch_id in localStorage
@@ -1137,12 +1145,15 @@ export default function LoginPage() {
         if (branchId) {
           localStorage.setItem('branch_id', branchId);
         }
+        if (linkEmployeeId) {
+          persistLinkEmployeeId(linkEmployeeId);
+        }
         
         // Close scanner
         closeQRScanner();
         
         // Redirect to login page with shop_id and branch_id
-        const redirectUrl = `/crm-customer/login?shop_id=${shopId}${branchId ? `&branch_id=${branchId}` : ''}`;
+        const redirectUrl = `/crm-customer/login?shop_id=${shopId}${branchId ? `&branch_id=${branchId}` : ''}${linkEmployeeId ? `&link_employee_id=${encodeURIComponent(linkEmployeeId)}` : ''}`;
         router.push(redirectUrl);
         
         toast.success('แสกน QR Code สำเร็จ กรุณาเข้าสู่ระบบด้วย LINE');
