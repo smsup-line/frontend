@@ -932,7 +932,7 @@ export default function LoginPage() {
       router.replace(next);
       return;
     }
-    router.replace(isEmployee ? '/crm-customer/receipt-scanner/employee' : '/crm-customer/profile');
+    router.replace('/crm-customer/profile');
   };
 
   const handleSelectMembership = async (option) => {

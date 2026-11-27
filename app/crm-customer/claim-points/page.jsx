@@ -138,8 +138,8 @@ function ClaimPoints() {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-[#f4f7fb] px-5 py-8 flex flex-col">
-      <div className="m-auto w-full max-w-sm rounded-3xl bg-white px-6 py-8 text-center shadow-[0_12px_40px_rgba(15,23,42,0.08)]">
+    <div className="box-border flex min-h-[100dvh] w-full min-w-0 flex-col bg-[#f4f7fb] px-4 py-8">
+      <div className="m-auto w-full max-w-md rounded-3xl bg-white px-6 py-8 text-center shadow-[0_12px_40px_rgba(15,23,42,0.08)]">
         <p className="text-sm font-medium text-slate-500">รับคะแนนสะสม</p>
         {scanning ? (
           <>

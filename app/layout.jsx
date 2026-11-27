@@ -28,7 +28,7 @@ export default async function RootLayout({
       </head>
       <body
         className={cn(
-          'antialiased flex h-full text-base text-foreground bg-background',
+          'antialiased flex h-full w-full min-w-0 flex-col text-base text-foreground bg-background',
           inter.className
         )}>
 
@@ -41,7 +41,9 @@ export default async function RootLayout({
           enableColorScheme>
 
           <TooltipProvider delayDuration={0}>
-            <Suspense>{children}</Suspense>
+            <Suspense>
+              <div className="flex w-full min-w-0 flex-1 flex-col">{children}</div>
+            </Suspense>
             <Toaster />
           </TooltipProvider>
         </ThemeProvider>
