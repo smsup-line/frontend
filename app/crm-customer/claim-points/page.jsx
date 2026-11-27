@@ -138,9 +138,9 @@ function ClaimPoints() {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
-      <div className="w-full max-w-md space-y-4 rounded-lg border bg-card p-6 text-center shadow-sm">
-        <h1 className="text-xl font-semibold">รับคะแนนสะสม</h1>
+    <div className="min-h-[100dvh] bg-[#f4f7fb] px-5 py-8 flex flex-col">
+      <div className="m-auto w-full max-w-sm rounded-3xl bg-white px-6 py-8 text-center shadow-[0_12px_40px_rgba(15,23,42,0.08)]">
+        <p className="text-sm font-medium text-slate-500">รับคะแนนสะสม</p>
         {scanning ? (
           <>
             <p className="text-sm text-muted-foreground">ส่องกล้องไปที่ QR ที่พนักงานสร้าง</p>
@@ -150,17 +150,17 @@ function ClaimPoints() {
           <p className="text-muted-foreground">กำลังโหลด...</p>
         ) : (
           <>
-            <p className="text-sm text-muted-foreground">{info.shop_name}</p>
-            <p className="text-4xl font-bold">{info.points}</p>
-            <p>{info.detail}</p>
+            <p className="mt-2 text-base text-slate-500">{info.shop_name}</p>
+            <p className="mt-4 text-6xl font-bold tracking-tight text-slate-900">{info.points}</p>
+            <p className="mt-2 text-base text-slate-600">{info.detail}</p>
             {info.status !== 'ready' ? (
               <p className="text-destructive">{info.status === 'claimed' ? 'QR นี้ถูกใช้แล้ว' : 'QR นี้หมดอายุแล้ว'}</p>
             ) : (
-              <Button className="w-full" onClick={claim} disabled={claiming}>
+              <Button className="mt-6 h-12 w-full rounded-xl text-base" onClick={claim} disabled={claiming}>
                 {claiming ? 'กำลังรับคะแนน...' : 'รับคะแนน'}
               </Button>
             )}
-            <Button type="button" variant="outline" className="w-full" onClick={() => { setCode(''); setInfo(null); setScanning(true); }}>
+            <Button type="button" variant="outline" className="mt-3 h-12 w-full rounded-xl text-base" onClick={() => { setCode(''); setInfo(null); setScanning(true); }}>
               สแกน QR อื่น
             </Button>
           </>
